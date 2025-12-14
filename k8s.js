@@ -369,6 +369,17 @@ async function checkOtterizeStatus(contextName) {
     }
 }
 
+async function getPodLogs(namespace, name, contextName, tailLines = 100) {
+    const k8sApi = getClient(k8s.CoreV1Api, contextName);
+    try {
+        const res = await k8sApi.readNamespacedPodLog(name, namespace, undefined, false, undefined, undefined, undefined, undefined, tailLines);
+        return res.body;
+    } catch (err) {
+        console.error(`Error fetching logs for pod ${name}:`, err);
+        throw err;
+    }
+}
+
 module.exports = {
     getNodes,
     getDeployments,
@@ -398,5 +409,6 @@ module.exports = {
     updateIngress,
     getContexts,
     getClientIntents,
-    checkOtterizeStatus
+    checkOtterizeStatus,
+    getPodLogs
 };

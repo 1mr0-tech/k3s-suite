@@ -37,8 +37,7 @@ app.post('/api/config/registry', express.json(), (req, res) => {
     registryConfig.username = username || '';
     registryConfig.password = password || '';
     registryConfig.isSecure = isSecure === undefined ? false : isSecure;
-    res.json({ message: 'Registry URL updated', config: registryConfig });
-    registryConfig.isSecure = isSecure === undefined ? false : isSecure;
+    registryConfig.timezone = req.body.timezone || 'UTC';
     res.json({ message: 'Registry URL updated', config: registryConfig });
 });
 
@@ -203,12 +202,42 @@ app.get('/api/repositories', (req, res) => {
     });
 });
 
+app.get('/api/repositories/:name/tags', async (req, res) => {
+    const repoName = req.params.name;
+    try {
+        const data = await reg.getRepoWithTags(registryConfig, repoName);
+        res.json(data);
+    } catch (err) {
+        console.error('Error fetching tags:', err);
+        res.status(500).json({ error: 'Failed to fetch tags', details: err.message });
+    }
+});
+
 app.get('/api/namespaces', async (req, res) => {
     try {
         const namespaces = await k8s.getNamespaces(currentContext);
         res.json(namespaces);
     } catch (err) {
         res.status(500).json({ error: 'Failed to get namespaces' });
+    }
+});
+
+app.get('/api/pods/:namespace/:name/logs', async (req, res) => {
+    try {
+        const context = req.header('x-k8s-context');
+        const { namespace, name } = req.params;
+        const tail = req.query.tail ? parseInt(req.query.tail) : 100;
+
+        // Validate context
+        if (!context) {
+            return res.status(400).json({ error: 'Missing x-k8s-context header' });
+        }
+
+        const logs = await k8s.getPodLogs(namespace, name, context, tail);
+        res.send(logs); // Send raw text
+    } catch (err) {
+        console.error('Error fetching pod logs:', err);
+        res.status(500).json({ error: 'Failed to fetch pod logs' });
     }
 });
 
