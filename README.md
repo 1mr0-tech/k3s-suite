@@ -1,31 +1,55 @@
 # k3s Suite
 
-**One-Stop Solution for On-Premise Kubernetes Development**
+**One-Stop Solution for Custom Kubernetes Development**
 
-k3s Suite is a lightweight, all-in-one dashboard designed to simplify the management of your local Kubernetes (k3s) clusters and local Docker registries. It provides a unified interface to visualize cluster resources and manage your local container images, making on-premise development seamless and efficient.
+k3s Suite is a comprehensive dashboard designed to simplify the management of your local Kubernetes clusters (k3s, k3d, etc.) and Docker registries. It bridges the gap between cluster visualization, resource management, and local container workflows.
 
 ## Features
 
--   **Cluster Visualization**: Real-time view of your k3s cluster resources including Nodes, Pods, Deployments, Services, Ingresses, and more.
--   **YAML Editor**: Built-in, read-only safe YAML viewer with editing capabilities and validation to modify resource configurations on the fly.
--   **Local Registry Management**: Integrated interface for `reg` (Docker Registry V2 client) to browse and manage images in your local Docker registry.
--   **Namespace Filtering**: Easily filter resources by namespace.
--   **Resource Management**: Quick actions to view, edit, and update resources.
+### ☸️ Cluster Management
+-   **Multi-Cluster Support**: Seamlessly switch between different Kubernetes contexts (`k3d`, `minikube`, etc.) directly from the sidebar.
+-   **Real-Time Visualization**: View Nodes, Pods, Deployments, Services, Ingresses, ConfigMaps, and Secrets.
+-   **Namespace Filtering**: Focus on specific namespaces to declutter your view.
+
+### 📝 Smart YAML Editor
+-   **Syntax Highlighting**: Integrated **CodeMirror** editor for reading and editing Kubernetes resources.
+-   **Validation**: Catch syntax errors before applying changes.
+-   **One-Click Apply**: Edit and save configurations directly to the cluster.
+
+### 🕸️ Network Visualization (Powered by Otterize)
+-   **Cluster Map**: Visualize the network traffic and relationships between your workloads.
+-   **Otterize Integration**: One-click installation of Otterize components to enable traffic intents mapping.
+-   **Interactive Graph**: Powered by **Vis.js** for a dynamic, interactive experience.
+
+### 🐳 Local Registry Manager
+-   **Browse Images**: View repositories and tags in your local Docker registry.
+-   **Authentication Support**: Compatible with secure registries (Username/Password) and self-signed certificates.
+-   **Insecure Registry Support**: Detailed guidance for configuring Docker to accept insecure local registries.
+
+### 🔒 Air-Gap Friendly
+-   **Offline Detection**: Automatically detects lack of internet access.
+-   **Fallbacks**: Gracefully downgrades features (e.g., standard text area instead of CodeMirror) when CDNs are unreachable.
+
+---
 
 ## Prerequisites
 
-Before running k3s Suite, ensure you have the following installed:
+To ensure a smooth setup, we provide a helper script to check for dependencies.
 
-1.  **Node.js**: Required to run the application server. [Download Node.js](https://nodejs.org/)
-2.  **k3s**: A lightweight Kubernetes distribution. [Install k3s](https://k3s.io/)
-    -   Ensure your `kubectl` is configured to point to your k3s cluster (usually `/etc/rancher/k3s/k3s.yaml`).
-3.  **reg**: Docker Registry v2 command-line client.
-    -   **Mac (Homebrew)**: `brew install reg`
-    -   **Linux**:
-        ```bash
-        curl -jfL https://github.com/genuinetools/reg/releases/download/v0.16.1/reg-linux-amd64 -o /usr/local/bin/reg
-        chmod +x /usr/local/bin/reg
-        ```
+**Run the Prerequisite Checker:**
+```bash
+./check-prereqs.sh
+```
+
+**Manual Requirements:**
+1.  **Node.js** (v14+): Required to run the application server.
+2.  **Kubectl**: Configured to access your cluster.
+3.  **Helm**: Required for installing Otterize (Network Map).
+4.  **reg**: The `genuinetools/reg` CLI tool for Docker Registry interaction.
+    -   *Mac*: `brew install genuinetools/reg/reg`
+    -   *Linux*: Download binary from [GitHub Releases](https://github.com/genuinetools/reg/releases).
+
+---
 
 ## Installation
 
@@ -40,31 +64,50 @@ Before running k3s Suite, ensure you have the following installed:
     npm install
     ```
 
-## Usage
-
-1.  **Start the server**:
+3.  **Start the server**:
     ```bash
-    model index.js
-    # or
-    npm start
+    node index.js
     ```
 
-2.  **Access the Dashboard**:
-    Open your browser and navigate to `http://localhost:3001`.
+4.  **Access the Dashboard**:
+    Open [http://localhost:3001](http://localhost:3001) in your browser.
 
-## Configuration
+---
 
-### Local Registry Setup
+## Guide & Walkthrough
 
-If you are running a local Docker registry (e.g., `docker run -d -p 5000:5000 --name registry registry:2`), k3s Suite can connect to it:
+### 1. Connecting to a Cluster
+The app automatically loads your `~/.kube/config`.
+-   Use the **Context Selector** at the top of the sidebar to choose your active cluster.
+-   The dashboard will refresh to show resources from the selected context.
 
-1.  Navigate to the **Repositories** tab in the sidebar.
-2.  If `reg` is installed but not configured, you will see a setup form.
-3.  Enter your registry URL (e.g., `localhost:5000`).
-4.  Click **Save Configuration**.
+### 2. Using the Network Map
+1.  Click **"View Cluster Map"** in the header.
+2.  If the map is empty, click **"Install Otterize"** (Requires Helm).
+3.  Once installed, traffic between services will be visualized as arrows on the graph.
 
-If the `reg` tool is missing, the dashboard will provide installation instructions.
+### 3. Configuring a Local Registry
+1.  Navigate to **Repositories** in the sidebar.
+2.  Enter your Registry URL (e.g., `http://localhost:5000` or `https://my-reg.local`).
+3.  (Optional) Enter Username/Password.
+4.  Toggle **SSL** based on your registry setup.
+5.  Click **Save**.
 
-## Contributing
+---
 
-Contributions are welcome! Please fork the repository and submit a pull request.
+## Troubleshooting
+
+-   **"Registry Error: HTTPS Client to HTTP Server"**:
+    -   Cause: You are trying to connect via HTTPS to an insecure HTTP registry.
+    -   Fix: Uncheck the **"Secure (SSL)"** toggle in the settings. Ensure your Docker daemon is configured with `"insecure-registries": ["your-registry-url"]`.
+
+-   **"Network Map Unavailable"**:
+    -   Cause: No internet access to load Vis.js, or Otterize not installed.
+    -   Fix: Connect to internet for the map visualization. Click "Install Otterize" to generate the data.
+
+-   **"YAML Editor Offline Mode"**:
+    -   Cause: No internet access to load CodeMirror CDN.
+    -   Correction: The editor falls back to a basic text area. Functionality (Save/Edit) remains intact, just without colors.
+
+## License
+MIT

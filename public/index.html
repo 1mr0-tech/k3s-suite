@@ -6,10 +6,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>k3s Suite</title>
     <link rel="stylesheet" href="style.css">
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/yaml/yaml.min.js"></script>
+    <style>
+        .CodeMirror {
+            height: 100%;
+            font-size: 14px;
+            border: 1px solid #444;
+        }
+
+        #network-map-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #444;
+            background: #222;
+        }
+    </style>
+    <!-- Vis.js -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 </head>
 
 <body>
+    <!-- Internet Access Disclaimer -->
+    <div id="internet-disclaimer"
+        style="background: #ff9800; color: #000; padding: 10px; text-align: center; display: none;">
+        <strong>Notice:</strong> This application uses external libraries (CodeMirror, Vis.js) which require internet
+        access. In air-gapped environments, the YAML Editor and Network Map may be unavailable.
+        <button
+            onclick="document.getElementById('internet-disclaimer').style.removeProperty('display'); document.getElementById('internet-disclaimer').style.display = 'none';"
+            style="background:none; border:none; cursor:pointer; font-weight:bold; margin-left:10px;">[Dismiss]</button>
+    </div>
+
     <div class="container">
+        <header style="display: flex; justify-content: flex-end; padding: 10px 20px;">
+            <!-- Removed duplicate h1 "k3s Suite" -->
+            <button onclick="showNetworkMap()"
+                style="background: white; color: #333; border: none; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                View Cluster Map
+            </button>
+        </header>
         <div id="sidebar">
             <h2>k3s Suite</h2>
 
@@ -338,11 +376,70 @@
         <div id="yaml-modal" class="modal" data-resource-url="">
             <div class="modal-content">
                 <span class="close" onclick="closeYamlModal()">&times;</span>
-                <textarea id="yaml-content" readonly></textarea>
+                <!-- Replaced textarea with div for CodeMirror, though CM can replace textarea automatically -->
+                <textarea id="yaml-content"
+                    style="display:none; width: 100%; height: calc(100% - 60px); background: #333; color: white; padding: 10px; border: 1px solid #444;"></textarea>
+                <div id="codemirror-container" style="height: calc(100% - 60px);"></div>
+                <div id="yaml-editor-warning" style="color: orange; display: none; margin-bottom: 5px;">Offline Mode:
+                    Syntax validation unavailable.</div>
                 <div class="modal-actions">
                     <button onclick="copyYamlToClipboard()">Copy to Clipboard</button>
                     <button id="edit-yaml-btn" onclick="enableYamlEditing()">Edit</button>
                     <button id="save-yaml-btn" onclick="saveYaml()" style="display: none;">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="network-map-modal" class="modal">
+            <div class="modal-content" style="width: 95%; height: 95%; display: flex; flex-direction: column;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #444;">
+                    <h2 style="margin: 0;">Cluster Network Map</h2>
+                    <span class="close" onclick="closeNetworkMap()" style="font-size: 28px;">&times;</span>
+                </div>
+
+                <div style="margin: 10px 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <label for="map-namespace-select">Namespace:</label>
+                        <select id="map-namespace-select" onchange="renderNetworkMap()">
+                            <option value="all">All Namespaces</option>
+                        </select>
+                        <button onclick="renderNetworkMap()">Refresh Map</button>
+                    </div>
+                    <div>
+                        <button id="btn-install-otterize" onclick="installOtterize()"
+                            style="background: #e91e63; display: none;">Install Otterize (Enable Mapping)</button>
+                    </div>
+                </div>
+
+                <!-- Main Content Area: Flex Row -->
+                <div style="display: flex; flex: 1; gap: 10px; overflow: hidden;">
+                    <!-- Left: Map -->
+                    <div style="flex: 3; display: flex; flex-direction: column;">
+                        <!-- Installation Instructions -->
+                        <div id="otterize-instructions"
+                            style="display:none; padding:10px; background:#333; margin-bottom:10px; border-radius:5px;">
+                            <p><strong>Otterize CLI Required for Full Features</strong></p>
+                            <p>To view traffic map, Otterize must be installed in the cluster. Click "Install Otterize"
+                                above to install components.</p>
+                            <p>For local CLI usage:</p>
+                            <pre style="background:#111; padding:5px;">brew install otterize/otterize/otterize</pre>
+                        </div>
+                        <div id="network-map-container" style="flex: 1; border: 1px solid #444; background: #222;">
+                        </div>
+                    </div>
+
+                    <!-- Right: Side Panel -->
+                    <div id="map-side-panel"
+                        style="flex: 1; background: #2a2a2a; border: 1px solid #444; display: flex; flex-direction: column;">
+                        <div style="padding: 10px; background: #333; font-weight: bold; border-bottom: 1px solid #444;">
+                            Access Graph
+                        </div>
+                        <div style="flex: 1; overflow: auto; padding: 10px;">
+                            <pre id="access-graph-text"
+                                style="color: #bbb; font-family: monospace; white-space: pre-wrap;">Select a namespace to view access graph...</pre>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -360,6 +457,25 @@
 
         <script>
             let currentYamlUrl = '';
+            let editor; // CodeMirror instance
+
+            // Initialize CodeMirror when page loads
+            window.onload = function () {
+                // Show disclaimer
+                document.getElementById('internet-disclaimer').style.display = 'block';
+
+                if (typeof CodeMirror !== 'undefined') {
+                    // We'll initialize it but keep it empty until needed
+                    editor = CodeMirror(document.getElementById('codemirror-container'), {
+                        mode: 'yaml',
+                        theme: 'monokai',
+                        lineNumbers: true,
+                        readOnly: true
+                    });
+                } else {
+                    console.warn('CodeMirror not loaded (Offline?)');
+                }
+            };
 
             function showContent(contentId) {
                 const allContent = document.querySelectorAll('.page-content');
@@ -371,8 +487,26 @@
 
             function showYamlModal(yaml, url) {
                 const textarea = document.getElementById('yaml-content');
-                textarea.value = yaml;
-                textarea.readOnly = true; // Start in read-only mode
+                const cmContainer = document.getElementById('codemirror-container');
+                const warning = document.getElementById('yaml-editor-warning');
+
+                if (editor) {
+                    // Online Mode
+                    textarea.style.display = 'none';
+                    cmContainer.style.display = 'block';
+                    warning.style.display = 'none';
+
+                    editor.setValue(yaml);
+                    editor.setOption('readOnly', true);
+                    setTimeout(() => editor.refresh(), 10);
+                } else {
+                    // Offline Fallback
+                    textarea.style.display = 'block';
+                    cmContainer.style.display = 'none';
+                    warning.style.display = 'block';
+                    textarea.value = yaml;
+                    textarea.readOnly = true;
+                }
 
                 document.getElementById('edit-yaml-btn').style.display = 'inline-block';
                 document.getElementById('save-yaml-btn').style.display = 'none';
@@ -386,14 +520,23 @@
             }
 
             function enableYamlEditing() {
-                const textarea = document.getElementById('yaml-content');
-                textarea.readOnly = false;
+                if (editor) {
+                    editor.setOption('readOnly', false);
+                } else {
+                    document.getElementById('yaml-content').readOnly = false;
+                }
                 document.getElementById('edit-yaml-btn').style.display = 'none';
                 document.getElementById('save-yaml-btn').style.display = 'inline-block';
             }
 
             function copyYamlToClipboard() {
-                const yamlContent = document.getElementById('yaml-content').value;
+                let yamlContent;
+                if (editor) {
+                    yamlContent = editor.getValue();
+                } else {
+                    yamlContent = document.getElementById('yaml-content').value;
+                }
+
                 navigator.clipboard.writeText(yamlContent).then(() => {
                     alert('YAML copied to clipboard!');
                 }, (err) => {
@@ -412,7 +555,13 @@
 
             async function confirmSave() {
                 const url = document.getElementById('yaml-modal').getAttribute('data-resource-url');
-                const yamlContent = document.getElementById('yaml-content').value;
+                let yamlContent;
+                if (editor) {
+                    yamlContent = editor.getValue();
+                } else {
+                    yamlContent = document.getElementById('yaml-content').value;
+                }
+
                 try {
                     const response = await fetch(url, {
                         method: 'PUT',
@@ -916,6 +1065,209 @@
                 } catch (err) {
                     console.error(err);
                     alert('Error switching context');
+                }
+            }
+
+            // Network Map Logic
+            async function showNetworkMap() {
+                document.getElementById('network-map-modal').style.display = 'block';
+
+                // Populate namespace selector in modal (clone from main or fetch)
+                const mainNsSelect = document.getElementById('namespace-select');
+                const mapNsSelect = document.getElementById('map-namespace-select');
+
+                // Preserve selection if possible, else copy all
+                const currentVal = mapNsSelect.value;
+                mapNsSelect.innerHTML = mainNsSelect.innerHTML;
+                // Add 'All Namespaces' if removed or just ensure it's there
+                // The main selector might not have 'all' if it's strict. Let's force it.
+                // Actually main selector logic is: <option value="all">All Namespaces</option> + others.
+                if (mainNsSelect.value) mapNsSelect.value = mainNsSelect.value;
+
+                // Check Otterize Status to toggle Install Button
+                try {
+                    const res = await fetch('/api/otterize/status');
+                    const status = await res.json();
+                    const installBtn = document.getElementById('btn-install-otterize');
+                    if (status.installed) {
+                        installBtn.style.display = 'none';
+                    } else {
+                        installBtn.style.display = 'block';
+                    }
+                } catch (e) {
+                    console.error('Failed to check otterize status', e);
+                }
+
+                renderNetworkMap();
+            }
+
+            function closeNetworkMap() {
+                document.getElementById('network-map-modal').style.display = 'none';
+            }
+
+            async function renderNetworkMap() {
+                const container = document.getElementById('network-map-container');
+                const namespace = document.getElementById('map-namespace-select').value;
+                const accessGraphText = document.getElementById('access-graph-text');
+
+                // Fallback for offline usage
+                if (typeof vis === 'undefined') {
+                    container.innerHTML = '<div style="color:orange; padding:20px; text-align:center;"><h3>Network Map Unavailable</h3><p>Vis.js library failed to load (Offline?). Internet access is required for this feature.</p></div>';
+                    return;
+                }
+
+                container.innerHTML = '<div style="color:white; padding:20px;">Loading map data...</div>';
+                accessGraphText.textContent = 'Loading...';
+
+                try {
+                    const res = await fetch(`/api/network-map?namespace=${namespace}`);
+                    if (!res.ok) throw new Error('Failed to fetch map data');
+                    const data = await res.json();
+
+                    if (data.edges.length === 0) {
+                        // Check if users might need to install otterize
+                        // Only show instructions if NOT installed
+                        const installBtn = document.getElementById('btn-install-otterize');
+                        if (installBtn.style.display !== 'none') {
+                            document.getElementById('otterize-instructions').style.display = 'block';
+                        } else {
+                            document.getElementById('otterize-instructions').style.display = 'none';
+                        }
+                    } else {
+                        document.getElementById('otterize-instructions').style.display = 'none';
+                    }
+
+                    // Render Textual Graph (CLI Simulation)
+                    renderAccessList(data);
+
+                    // Create Vis.js data
+                    const nodes = new vis.DataSet(data.nodes);
+                    const edges = new vis.DataSet(data.edges);
+
+                    const mapData = { nodes: nodes, edges: edges };
+                    const options = {
+                        nodes: {
+                            shape: 'box',
+                            margin: 10,
+                            font: { color: 'black' },
+                            color: { background: '#2196F3', border: '#0D47A1' }
+                        },
+                        edges: {
+                            arrows: {
+                                to: {
+                                    enabled: true,
+                                    scaleFactor: 1.2
+                                }
+                            },
+                            color: {
+                                color: '#ffffff',
+                                highlight: '#ff9800', // Orange on click
+                                hover: '#ff9800',
+                                inherit: false,
+                                opacity: 1.0
+                            },
+                            width: 2,
+                            smooth: {
+                                type: 'continuous'
+                            }
+                        },
+                        physics: {
+                            enabled: true,
+                            barnesHut: {
+                                gravitationalConstant: -4000,
+                                centralGravity: 0.1,
+                                springLength: 250,
+                                springConstant: 0.04,
+                                damping: 0.09,
+                                avoidOverlap: 1
+                            },
+                        },
+                        layout: {
+                            randomSeed: 2
+                        }
+                    };
+
+                    new vis.Network(container, mapData, options);
+
+                } catch (err) {
+                    console.error(err);
+                    container.innerHTML = `<div style="color:red; padding:20px;">Error loading map: ${err.message}</div>`;
+                    accessGraphText.textContent = 'Error loading data.';
+                }
+            }
+
+            function renderAccessList(data) {
+                // data.nodes = [{id, label, group...}]
+                // data.edges = [{from, to...}]
+
+                // Guidance for empty state
+                if (data.edges.length === 0) {
+                    document.getElementById('access-graph-text').innerHTML = `
+<div style="color: #ccc; padding: 10px;">
+    <strong>No Traffic Detected</strong>
+    <p>The network map shows <em>active traffic</em> between services.</p>
+    <p><strong>To populate the map:</strong></p>
+    <ol style="padding-left: 20px; line-height: 1.6;">
+        <li>Ensure Otterize is installed (Status: <span id="ott-status-txt">Checking...</span>).</li>
+        <li><strong>Generate Traffic:</strong> Interact with your applications (e.g., make HTTP requests, trigger jobs).</li>
+        <li>Wait 30-60 seconds for the mapper to aggregate data.</li>
+        <li>Click <strong>Refresh Map</strong>.</li>
+    </ol>
+</div>`;
+                    // Check status for the help text
+                    fetch('/api/otterize/status').then(r => r.json()).then(s => {
+                        const el = document.getElementById('ott-status-txt');
+                        if (el) el.textContent = s.installed ? 'Installed ✅' : 'Not Installed ❌';
+                        if (el) el.style.color = s.installed ? 'lightgreen' : 'red';
+                    });
+
+                    return;
+                }
+
+                // Group edges by source
+                const map = {}; // sourceID -> [targetIDs]
+
+                data.nodes.forEach(n => {
+                    map[n.id] = { name: n.label, ns: n.group, calls: [] };
+                });
+
+                data.edges.forEach(e => {
+                    if (map[e.from]) {
+                        // Resolve target name
+                        const targetNode = data.nodes.find(n => n.id === e.to);
+                        const targetName = targetNode ? targetNode.label : e.to;
+                        if (!map[e.from].calls.includes(targetName)) {
+                            map[e.from].calls.push(targetName);
+                        }
+                    }
+                });
+
+                let output = '';
+                // Format:
+                // frontend in namespace otterize-ecom-demo calls:
+                //   - cartservice
+
+                Object.values(map).forEach(item => {
+                    if (item.calls.length > 0) {
+                        output += `${item.name} in namespace ${item.ns} calls:\n`;
+                        item.calls.sort().forEach(target => {
+                            output += `  - ${target}\n`;
+                        });
+                        output += '\n';
+                    }
+                });
+
+                document.getElementById('access-graph-text').textContent = output;
+            }
+
+            async function installOtterize() {
+                try {
+                    const res = await fetch('/api/otterize/install', { method: 'POST' });
+                    const data = await res.json();
+                    alert(data.message);
+                    document.getElementById('otterize-instructions').style.display = 'block';
+                } catch (err) {
+                    alert('Failed to start installation: ' + err.message);
                 }
             }
 
