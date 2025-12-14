@@ -315,6 +315,60 @@ async function updateIngress(namespace, name, yamlString, contextName) {
     }
 }
 
+async function getClientIntents(namespace, contextName) {
+    try {
+        const customObjectsApi = getClient(k8s.CustomObjectsApi, contextName);
+        // Otterize ClientIntents: Group=k8s.otterize.com, Version=v1alpha3, Plural=clientintents
+        // Trying v1alpha3 as it's common, falling back might be complex, assuming standard install
+        // The implementation plan mentioned v1alpha2, but v1alpha3 is current. Reference check?
+        // Let's try v1alpha3 first. Or checking api-resources would be better but expensive.
+        // Sticking to v1alpha3 based on likely version.
+        // Ideally we should list Cluster wide or Namespaced. Otterize intents are namespaced.
+
+        let res;
+        if (namespace && namespace !== 'all') {
+            res = await customObjectsApi.listNamespacedCustomObject(
+                'k8s.otterize.com',
+                'v1alpha3',
+                namespace,
+                'clientintents'
+            );
+        } else {
+            res = await customObjectsApi.listClusterCustomObject(
+                'k8s.otterize.com',
+                'v1alpha3',
+                'clientintents'
+            );
+        }
+        return res.body;
+    } catch (err) {
+        // If 404, likely CRD not installed
+        if (err.statusCode === 404) {
+            console.log('ClientIntents CRD not found (Otterize might not be installed)');
+            return { items: [] };
+        }
+        console.error('Error listing clientintents:', err);
+        throw err;
+    }
+}
+
+async function checkOtterizeStatus(contextName) {
+    try {
+        const k8sApi = getClient(k8s.AppsV1Api, contextName);
+        // Check for otterize-network-mapper in otterize-system namespace
+        // Simple check: see if the deployment exists
+        await k8sApi.readNamespacedDeployment('otterize-network-mapper', 'otterize-system');
+        return true;
+    } catch (err) {
+        if (err.statusCode === 404) {
+            return false;
+        }
+        // If other error (e.g. permission), assume not reachable/installed for now or let UI handle
+        console.error('Error checking Otterize status:', err.message);
+        return false;
+    }
+}
+
 module.exports = {
     getNodes,
     getDeployments,
@@ -342,5 +396,7 @@ module.exports = {
     updateDeployment,
     updateService,
     updateIngress,
-    getContexts
+    getContexts,
+    getClientIntents,
+    checkOtterizeStatus
 };

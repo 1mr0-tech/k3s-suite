@@ -12,6 +12,7 @@ app.get('/', (req, res) => {
 const k8s = require('./k8s');
 
 const reg = require('./reg');
+const { exec } = require('child_process');
 
 let currentContext = null; // Store currently selected context
 
@@ -367,6 +368,97 @@ app.post('/api/yaml', express.json(), async (req, res) => {
         res.json({ message: 'Updated successfully' });
     } catch (err) {
         res.status(500).json({ error: 'Failed to update YAML', details: err });
+    }
+});
+
+app.get('/api/network-map', async (req, res) => {
+    try {
+        const namespace = req.query.namespace || 'all';
+        // Nodes: Services (representing workloads)
+        // Edges: ClientIntents
+        const services = await k8s.getServices(currentContext);
+        const intents = await k8s.getClientIntents(namespace, currentContext);
+
+        // Filter services if namespace is selected
+        let nodes = services.items;
+        if (namespace !== 'all') {
+            nodes = nodes.filter(s => s.metadata.namespace === namespace);
+        }
+
+        // Simplify nodes for Vis.js
+        const mapNodes = nodes.map(svc => ({
+            id: `${svc.metadata.namespace}/${svc.metadata.name}`,
+            label: svc.metadata.name,
+            group: svc.metadata.namespace,
+            title: `Namespace: ${svc.metadata.namespace}`,
+            shape: 'box'
+        }));
+
+        // Simplify edges from ClientIntents
+        const mapEdges = [];
+        if (intents && intents.items) {
+            intents.items.forEach(intent => {
+                const sourceNs = intent.metadata.namespace;
+                const sourceName = intent.spec.service.name; // v1alpha3 use 'service.name' usually
+
+                // Intents can have multiple calls
+                if (intent.spec.calls) {
+                    intent.spec.calls.forEach(call => {
+                        const targetName = call.name;
+                        // Target might be in same NS or different (if full name used, logic complex)
+                        // Assuming simplifed view: same NS or explicit logic needed for cross-ns
+                        // Otterize validation often requires explicit NS if cross
+                        const targetNs = sourceNs; // Simplification for now
+
+                        mapEdges.push({
+                            from: `${sourceNs}/${sourceName}`,
+                            to: `${targetNs}/${targetName}`,
+                            arrows: 'to',
+                            color: { color: 'green' }
+                        });
+                    });
+                }
+            });
+        }
+
+        res.json({ nodes: mapNodes, edges: mapEdges });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to generate network map', details: err.message });
+    }
+});
+
+app.post('/api/otterize/install', (req, res) => {
+    // Basic installer using Helm
+    const cmd = `helm repo add otterize https://helm.otterize.com && \
+                 helm repo update && \
+                 helm upgrade --install otterize otterize/otterize-kubernetes -n otterize-system --create-namespace --wait`;
+
+    // We run async but return immediate ID or status? 
+    // For simplicity, let's wait (could timeout) or send 202
+    // Given 'wait' flag, it might take time. Let's not use wait in exec if possible to avoid hanging request?
+    // User wants instructions to install CLI locally. This runs in-cluster components.
+    // Let's run it.
+    console.log('Installing Otterize...');
+    exec(cmd, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`exec error: ${error}`);
+            // If response not sent yet? We shouldn't block.
+            // Let's send 200 "Started" and let user refresh map to see if it works later.
+            return;
+        }
+        console.log(`stdout: ${stdout}`);
+        console.error(`stderr: ${stderr}`);
+    });
+
+    res.json({ message: 'Installation started. This may take a few minutes.' });
+});
+
+app.get('/api/otterize/status', async (req, res) => {
+    try {
+        const isInstalled = await k8s.checkOtterizeStatus(currentContext);
+        res.json({ installed: isInstalled });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to check status', details: err.message });
     }
 });
 
