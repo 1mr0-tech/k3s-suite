@@ -40,9 +40,11 @@ k3s Suite is a comprehensive dashboard designed to simplify the management of yo
 -   **Access Graph**: Side panel detailing exactly "who calls whom" in your cluster.
 
 ### 🐳 Local Registry Manager
--   **Browse Images**: View repositories and tags in your local Docker registry.
--   **Authentication Support**: Compatible with secure registries (Username/Password) and self-signed certificates.
--   **Insecure Registry Support**: Detailed guidance for configuring Docker to accept insecure local registries.
+-   **Modern UI**: Redesigned accordion view with **Search** functionality.
+-   **Smart Tag Sorting**: Tags are automatically sorted by creation date (newest first).
+-   **Timezone Support**: Configure your preferred Timezone (UTC, EST, IST, etc.) for clear date visibility.
+-   **Configuration**: Friendly setup flow for URL, Auth, and SSL settings.
+-   **Insecure Registry Support**: First-class support for local `http` registries.
 
 ### 🔒 Air-Gap Friendly
 -   **Offline Detection**: Automatically detects lack of internet access.
@@ -103,21 +105,27 @@ The app automatically loads your `~/.kube/config`.
 1.  Click the blue **+** button at the bottom-right.
 2.  **Template Mode**: Select a resource type (e.g., Deployment) to get a starter YAML.
 3.  **Clone Mode**: Select "Clone Existing", pick a namespace and resource type, and load the YAML from a running workload.
-4.  Edit the YAML in the editor.
-5.  Select a **Target Namespace** (or leave default).
-6.  Click **Apply to Cluster**.
+4.  **Namespace Sync**: When you select a **Target Namespace**, the YAML content automatically updates to match it.
+5.  Click **Apply to Cluster**.
 
-### 3. Using the Network Map
+### 3. Live Pod Logs
+1.  Navigate to **Pods**.
+2.  Click **"View Logs"** next to any running pod.
+3.  A modal opens showing real-time logs.
+4.  Toggle **Auto-refresh** to stream new log lines automatically.
+
+### 4. Using the Network Map
 1.  Click **"View Cluster Map"** in the header.
 2.  If the map is empty, click **"Install Otterize"** (Requires Helm).
 3.  Once installed, traffic between services will be visualized as arrows on the graph.
 
-### 4. Configuring a Local Registry
+### 5. Configuring a Local Registry
 1.  Navigate to **Repositories** in the sidebar.
-2.  Enter your Registry URL (e.g., `http://localhost:5000` or `https://my-reg.local`).
-3.  (Optional) Enter Username/Password.
-4.  Toggle **SSL** based on your registry setup.
-5.  Click **Save**.
+2.  If not configured, you will see a setup prompt.
+3.  Enter your Registry URL (e.g., `localhost:8090`).
+4.  Select your **Time Zone** to ensure tag dates are readable.
+5.  Toggle **SSL** if needed and click **Save**.
+6.  Use the **Settings** button to update this configuration anytime.
 
 ---
 
