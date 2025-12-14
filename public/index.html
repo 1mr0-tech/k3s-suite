@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>k3s Suite</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div id="sidebar">
+            <h2>k3s Suite</h2>
+
+            <div style="padding: 10px; border-bottom: 1px solid #444;">
+                <label for="context-selector"
+                    style="display:block; margin-bottom:5px; font-size:0.9em; color:#aaa;">Cluster / Context:</label>
+                <select id="context-selector"
+                    style="width: 100%; padding: 5px; background: #222; color: #fff; border: 1px solid #444; border-radius: 3px;"
+                    onchange="switchContext(this.value)">
+                    <option>Loading...</option>
+                </select>
+            </div>
+            <div class="content">
+                <div class="sidebar">
+                    <button onclick="showContent('nodes')">Nodes</button>
+                    <button onclick="showContent('deployments')">Deployments</button>
+                    <button onclick="showContent('pods')">Pods</button>
+                    <button onclick="showContent('services')">Services</button>
+                    <button onclick="showContent('ingresses')">Ingresses</button>
+                    <button onclick="showContent('daemonsets')">DaemonSets</button>
+                    <button onclick="showContent('statefulsets')">StatefulSets</button>
+                    <button onclick="showContent('jobs')">Jobs</button>
+                    <button onclick="showContent('cronjobs')">CronJobs</button>
+                    <button onclick="showContent('configmaps')">ConfigMaps</button>
+                    <button onclick="showContent('secrets')">Secrets</button>
+                    <button onclick="showContent('repositories')">Repositories</button>
+                </div>
+                <div class="main-content">
+                    <div class="namespace-filter">
+                        <label for="namespace-select">Namespace:</label>
+                        <select id="namespace-select" onchange="filterByNamespace()">
+                            <option value="all">All Namespaces</option>
+                        </select>
+                    </div>
+                    <div id="nodes-content" class="page-content">
+                        <div class="page-header">
+                            <h2>Nodes</h2>
+                            <button onclick="fetchAndRenderNodes()">Refresh</button>
+                        </div>
+                        <table id="nodes-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Version</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="deployments-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>Deployments</h2>
+                            <button onclick="fetchAndRenderDeployments()">Refresh</button>
+                        </div>
+                        <table id="deployments-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Replicas</th>
+                                    <th>Ready Replicas</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="pods-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>Pods</h2>
+                            <button onclick="fetchAndRenderPods()">Refresh</button>
+                        </div>
+                        <table id="pods-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Node</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="services-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>Services</h2>
+                            <button onclick="fetchAndRenderServices()">Refresh</button>
+                        </div>
+                        <table id="services-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Cluster IP</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="ingresses-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>Ingresses</h2>
+                            <button onclick="fetchAndRenderIngresses()">Refresh</button>
+                        </div>
+                        <table id="ingresses-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Hosts</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="daemonsets-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>DaemonSets</h2>
+                            <button onclick="fetchAndRenderDaemonSets()">Refresh</button>
+                        </div>
+                        <table id="daemonsets-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Desired</th>
+                                    <th>Current</th>
+                                    <th>Ready</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="statefulsets-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>StatefulSets</h2>
+                            <button onclick="fetchAndRenderStatefulSets()">Refresh</button>
+                        </div>
+                        <table id="statefulsets-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Replicas</th>
+                                    <th>Ready Replicas</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="jobs-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>Jobs</h2>
+                            <button onclick="fetchAndRenderJobs()">Refresh</button>
+                        </div>
+                        <table id="jobs-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Completions</th>
+                                    <th>Duration</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="cronjobs-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>CronJobs</h2>
+                            <button onclick="fetchAndRenderCronJobs()">Refresh</button>
+                        </div>
+                        <table id="cronjobs-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Schedule</th>
+                                    <th>Last Schedule</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="configmaps-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>ConfigMaps</h2>
+                            <button onclick="fetchAndRenderConfigMaps()">Refresh</button>
+                        </div>
+                        <table id="configmaps-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="secrets-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>Secrets</h2>
+                            <button onclick="fetchAndRenderSecrets()">Refresh</button>
+                        </div>
+                        <table id="secrets-table">
+                            <thead>
+                                <tr>
+                                    <th>Namespace</th>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="repositories-content" class="page-content" style="display: none;">
+                        <div class="page-header">
+                            <h2>Repositories</h2>
+                        </div>
+                        <div id="registry-setup"
+                            style="display: none; padding: 20px; border: 1px solid var(--border-color); border-radius: 5px; margin-bottom: 20px;">
+                            <h3>Registry Setup</h3>
+                            <p>Configure your local Docker Registry.</p>
+                            <div style="margin-bottom: 10px;">
+                                <label for="registry-url" style="display:block; margin-bottom:5px;">Registry URL (e.g.
+                                    localhost:5000):</label>
+                                <input type="text" id="registry-url" placeholder="localhost:5000"
+                                    style="padding: 0.5em; width: 300px;">
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="registry-username" style="display:block; margin-bottom:5px;">Username
+                                    (Optional):</label>
+                                <input type="text" id="registry-username" placeholder="Username"
+                                    style="padding: 0.5em; width: 300px;">
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="registry-password" style="display:block; margin-bottom:5px;">Password
+                                    (Optional):</label>
+                                <input type="password" id="registry-password" placeholder="Password"
+                                    style="padding: 0.5em; width: 300px;">
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <input type="checkbox" id="registry-secure">
+                                <label for="registry-secure">Use Secure Connection (SSL)</label>
+                            </div>
+                            <button onclick="saveRegistryConfig()">Save Configuration</button>
+                        </div>
+                        <div id="registry-error"
+                            style="display: none; padding: 20px; background-color: #330000; border: 1px solid #ff4444; border-radius: 5px; margin-bottom: 20px; color: #ffcccc;">
+                            <h3 style="margin-top: 0;">Error</h3>
+                            <p id="registry-error-msg"></p>
+                            <div id="reg-install-instructions"
+                                style="display: none; margin-top: 10px; background-color: #1a0000; padding: 10px; border-radius: 3px; font-family: monospace;">
+                                <p>To view repositories, you need to install the 'reg' tool.</p>
+                                <p><strong>Mac (Homebrew):</strong><br>brew install reg</p>
+                                <p><strong>Linux:</strong><br>curl -jfL
+                                    https://github.com/genuinetools/reg/releases/download/v0.16.1/reg-linux-amd64 -o
+                                    /usr/local/bin/reg && chmod +x /usr/local/bin/reg</p>
+                            </div>
+                            <div id="docker-insecure-instructions"
+                                style="display: none; margin-top: 10px; background-color: #1a0000; padding: 10px; border-radius: 3px; font-family: monospace; white-space: pre-wrap;">
+                                <strong style="color: #ffaa00;">💡 Likely Solution: Docker's Insecure Registries
+                                    Configuration</strong>
+
+                                The most common reason for this behavior is that the Docker Daemon enforces HTTPS. You
+                                need
+                                to tell Docker that your registry (e.g., localhost:8090) is an insecure (HTTP) registry.
+
+                                1. <strong>Locate/Create daemon.json</strong>:
+                                Linux: <code>/etc/docker/daemon.json</code>
+                                Windows: <code>C:\ProgramData\Docker\config\daemon.json</code>
+                                macOS: Docker Desktop > Settings > Docker Engine
+
+                                2. <strong>Add the insecure-registries Entry</strong>:
+                                <code>{
+      "insecure-registries": ["YOUR_REGISTRY_URL"]
+    }</code>
+
+                                3. <strong>Restart Docker Daemon</strong>:
+                                Linux: <code>sudo systemctl restart docker</code>
+                                Mac/Windows: Restart Docker Desktop.
+                            </div>
+                        </div>
+                        <button onclick="fetchRepositories()" style="margin-bottom: 1em;">Refresh</button>
+                        <ul id="repositories-list"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="yaml-modal" class="modal" data-resource-url="">
+            <div class="modal-content">
+                <span class="close" onclick="closeYamlModal()">&times;</span>
+                <textarea id="yaml-content" readonly></textarea>
+                <div class="modal-actions">
+                    <button onclick="copyYamlToClipboard()">Copy to Clipboard</button>
+                    <button id="edit-yaml-btn" onclick="enableYamlEditing()">Edit</button>
+                    <button id="save-yaml-btn" onclick="saveYaml()" style="display: none;">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="confirmation-modal" class="modal">
+            <div class="modal-content">
+                <h3>Confirm Save</h3>
+                <p>Are you sure you want to save changes to this YAML?</p>
+                <div class="modal-actions" style="justify-content: center;">
+                    <button onclick="confirmSave()">Confirm</button>
+                    <button onclick="cancelSave()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            let currentYamlUrl = '';
+
+            function showContent(contentId) {
+                const allContent = document.querySelectorAll('.page-content');
+                allContent.forEach(content => {
+                    content.style.display = 'none';
+                });
+                document.getElementById(`${contentId}-content`).style.display = 'block';
+            }
+
+            function showYamlModal(yaml, url) {
+                const textarea = document.getElementById('yaml-content');
+                textarea.value = yaml;
+                textarea.readOnly = true; // Start in read-only mode
+
+                document.getElementById('edit-yaml-btn').style.display = 'inline-block';
+                document.getElementById('save-yaml-btn').style.display = 'none';
+
+                document.getElementById('yaml-modal').style.display = 'block';
+                document.getElementById('yaml-modal').setAttribute('data-resource-url', url);
+            }
+
+            function closeYamlModal() {
+                document.getElementById('yaml-modal').style.display = 'none';
+            }
+
+            function enableYamlEditing() {
+                const textarea = document.getElementById('yaml-content');
+                textarea.readOnly = false;
+                document.getElementById('edit-yaml-btn').style.display = 'none';
+                document.getElementById('save-yaml-btn').style.display = 'inline-block';
+            }
+
+            function copyYamlToClipboard() {
+                const yamlContent = document.getElementById('yaml-content').value;
+                navigator.clipboard.writeText(yamlContent).then(() => {
+                    alert('YAML copied to clipboard!');
+                }, (err) => {
+                    console.error('Failed to copy YAML: ', err);
+                    alert('Failed to copy YAML. See console for details.');
+                });
+            }
+
+            function saveYaml() {
+                document.getElementById('confirmation-modal').style.display = 'block';
+            }
+
+            function cancelSave() {
+                document.getElementById('confirmation-modal').style.display = 'none';
+            }
+
+            async function confirmSave() {
+                const url = document.getElementById('yaml-modal').getAttribute('data-resource-url');
+                const yamlContent = document.getElementById('yaml-content').value;
+                try {
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'text/yaml',
+                        },
+                        body: yamlContent,
+                    });
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.error);
+                    }
+                    alert('YAML saved successfully!');
+                    document.getElementById('confirmation-modal').style.display = 'none';
+                    closeYamlModal();
+                    loadAllData();
+                } catch (error) {
+                    console.error('Error saving YAML:', error);
+                    alert(`Failed to save YAML: ${error.message}`);
+                    document.getElementById('confirmation-modal').style.display = 'none';
+                }
+            }
+
+            async function fetchAndShowYaml(url) {
+                console.log('Fetching YAML from:', url);
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch YAML from ${url}`);
+                    }
+                    const yaml = await response.text();
+                    showYamlModal(yaml, url);
+                } catch (error) {
+                    console.error('Error fetching YAML:', error);
+                }
+            }
+
+            async function fetchNamespaces() {
+                try {
+                    const response = await fetch('/api/namespaces');
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch namespaces');
+                    }
+                    const data = await response.json();
+                    const select = document.getElementById('namespace-select');
+                    // Clear existing options except the first one
+                    while (select.options.length > 1) {
+                        select.remove(1);
+                    }
+                    data.items.forEach(ns => {
+                        const option = document.createElement('option');
+                        option.value = ns.metadata.name;
+                        option.textContent = ns.metadata.name;
+                        select.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Error fetching namespaces:', error);
+                }
+            }
+
+            function filterByNamespace() {
+                console.log('Filtering by namespace:', document.getElementById('namespace-select').value);
+                fetchAndRenderDeployments();
+                fetchAndRenderPods();
+                fetchAndRenderServices();
+                fetchAndRenderIngresses();
+                fetchAndRenderDaemonSets();
+                fetchAndRenderStatefulSets();
+                fetchAndRenderJobs();
+                fetchAndRenderCronJobs();
+                fetchAndRenderConfigMaps();
+                fetchAndRenderSecrets();
+            }
+
+            function renderDeployments(items, tableBody) {
+                items.forEach(deployment => {
+                    const row = document.createElement('tr');
+                    const namespace = deployment.metadata.namespace;
+                    const name = deployment.metadata.name;
+                    const replicas = deployment.spec.replicas;
+                    const readyReplicas = deployment.status.readyReplicas || 0;
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td>${replicas}</td>
+                        <td>${readyReplicas}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/deployments/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function renderPods(items, tableBody) {
+                items.forEach(pod => {
+                    const row = document.createElement('tr');
+                    const namespace = pod.metadata.namespace;
+                    const name = pod.metadata.name;
+                    const status = pod.status.phase;
+                    const node = pod.spec.nodeName;
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td>${status}</td>
+                        <td>${node}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/pods/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function renderServices(items, tableBody) {
+                items.forEach(service => {
+                    const row = document.createElement('tr');
+                    const namespace = service.metadata.namespace;
+                    const name = service.metadata.name;
+                    const type = service.spec.type;
+                    const clusterIp = service.spec.clusterIP;
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td>${type}</td>
+                        <td>${clusterIp}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/services/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function renderIngresses(items, tableBody) {
+                items.forEach(ingress => {
+                    const row = document.createElement('tr');
+                    const namespace = ingress.metadata.namespace;
+                    const name = ingress.metadata.name;
+                    const hosts = ingress.spec.rules.map(rule => rule.host).join(', ');
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td>${hosts}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/ingresses/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function renderDaemonSets(items, tableBody) {
+                items.forEach(daemonset => {
+                    const row = document.createElement('tr');
+                    const namespace = daemonset.metadata.namespace;
+                    const name = daemonset.metadata.name;
+                    const desired = daemonset.status.desiredNumberScheduled;
+                    const current = daemonset.status.currentNumberScheduled;
+                    const ready = daemonset.status.numberReady;
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td>${desired}</td>
+                        <td>${current}</td>
+                        <td>${ready}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/daemonsets/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function renderStatefulSets(items, tableBody) {
+                items.forEach(statefulset => {
+                    const row = document.createElement('tr');
+                    const namespace = statefulset.metadata.namespace;
+                    const name = statefulset.metadata.name;
+                    const replicas = statefulset.spec.replicas;
+                    const readyReplicas = statefulset.status.readyReplicas || 0;
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td>${replicas}</td>
+                        <td>${readyReplicas}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/statefulsets/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function renderJobs(items, tableBody) {
+                items.forEach(job => {
+                    const row = document.createElement('tr');
+                    const namespace = job.metadata.namespace;
+                    const name = job.metadata.name;
+                    const completions = job.spec.completions;
+                    const duration = job.status.completionTime ? new Date(job.status.completionTime) - new Date(job.status.startTime) : '-';
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td>${completions}</td>
+                        <td>${duration}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/jobs/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function renderCronJobs(items, tableBody) {
+                items.forEach(cronjob => {
+                    const row = document.createElement('tr');
+                    const namespace = cronjob.metadata.namespace;
+                    const name = cronjob.metadata.name;
+                    const schedule = cronjob.spec.schedule;
+                    const lastSchedule = cronjob.status.lastScheduleTime || '-';
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td>${schedule}</td>
+                        <td>${lastSchedule}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/cronjobs/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function renderConfigMaps(items, tableBody) {
+                items.forEach(configmap => {
+                    const row = document.createElement('tr');
+                    const namespace = configmap.metadata.namespace;
+                    const name = configmap.metadata.name;
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/configmaps/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            function renderSecrets(items, tableBody) {
+                items.forEach(secret => {
+                    const row = document.createElement('tr');
+                    const namespace = secret.metadata.namespace;
+                    const name = secret.metadata.name;
+                    const type = secret.type;
+                    row.innerHTML = `
+                        <td>${namespace}</td>
+                        <td>${name}</td>
+                        <td>${type}</td>
+                        <td><button onclick="fetchAndShowYaml('/api/secrets/${namespace}/${name}/yaml')">View YAML</button></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            async function fetchAndRenderNodes() {
+                try {
+                    const response = await fetch('/api/nodes');
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch nodes');
+                    }
+                    const data = await response.json();
+                    const tableBody = document.querySelector('#nodes-table tbody');
+                    tableBody.innerHTML = '';
+                    data.items.forEach(node => {
+                        const row = document.createElement('tr');
+                        const name = node.metadata.name;
+                        const status = node.status.conditions.find(c => c.type === 'Ready').status;
+                        const version = node.status.nodeInfo.kubeletVersion;
+                        row.innerHTML = `
+                            <td>${name}</td>
+                            <td>${status}</td>
+                            <td>${version}</td>
+                            <td><button onclick="fetchAndShowYaml('/api/nodes/${name}/yaml')">View YAML</button></td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                } catch (error) {
+                    console.error('Error fetching nodes:', error);
+                }
+            }
+
+            async function fetchAndRenderGeneric(resource, renderFunc, tableBodySelector) {
+                const selectedNamespace = document.getElementById('namespace-select').value;
+                const tableBody = document.querySelector(tableBodySelector);
+                tableBody.innerHTML = '';
+                try {
+                    const response = await fetch(`/api/${resource}`);
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch ${resource}`);
+                    }
+                    const data = await response.json();
+                    const filteredItems = selectedNamespace === 'all'
+                        ? data.items
+                        : data.items.filter(item => item.metadata.namespace === selectedNamespace);
+                    renderFunc(filteredItems, tableBody);
+                } catch (error) {
+                    console.error(`Error fetching ${resource}:`, error);
+                }
+            }
+
+            function fetchAndRenderDeployments() {
+                fetchAndRenderGeneric('deployments', renderDeployments, '#deployments-table tbody');
+            }
+
+            function fetchAndRenderPods() {
+                fetchAndRenderGeneric('pods', renderPods, '#pods-table tbody');
+            }
+
+            function fetchAndRenderServices() {
+                fetchAndRenderGeneric('services', renderServices, '#services-table tbody');
+            }
+
+            function fetchAndRenderIngresses() {
+                fetchAndRenderGeneric('ingresses', renderIngresses, '#ingresses-table tbody');
+            }
+
+            function fetchAndRenderDaemonSets() {
+                fetchAndRenderGeneric('daemonsets', renderDaemonSets, '#daemonsets-table tbody');
+            }
+
+            function fetchAndRenderStatefulSets() {
+                fetchAndRenderGeneric('statefulsets', renderStatefulSets, '#statefulsets-table tbody');
+            }
+
+            function fetchAndRenderJobs() {
+                fetchAndRenderGeneric('jobs', renderJobs, '#jobs-table tbody');
+            }
+
+            function fetchAndRenderCronJobs() {
+                fetchAndRenderGeneric('cronjobs', renderCronJobs, '#cronjobs-table tbody');
+            }
+
+            function fetchAndRenderConfigMaps() {
+                fetchAndRenderGeneric('configmaps', renderConfigMaps, '#configmaps-table tbody');
+            }
+
+            function fetchAndRenderSecrets() {
+                fetchAndRenderGeneric('secrets', renderSecrets, '#secrets-table tbody');
+            }
+
+            async function fetchRepositories() {
+                const list = document.querySelector('#repositories-list');
+                const setupDiv = document.getElementById('registry-setup');
+                const errorDiv = document.getElementById('registry-error');
+                const errorMsg = document.getElementById('registry-error-msg');
+                const installInstr = document.getElementById('reg-install-instructions');
+                const insecureInstr = document.getElementById('docker-insecure-instructions');
+
+                list.innerHTML = 'Loading...';
+                errorDiv.style.display = 'none';
+                installInstr.style.display = 'none';
+                insecureInstr.style.display = 'none';
+
+                try {
+                    const response = await fetch('/api/repositories');
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        if (data.details && data.details.type === 'NOT_INSTALLED') {
+                            throw new Error('NOT_INSTALLED');
+                        } else if (data.details && data.details.type === 'HTTPS_MISMATCH') {
+                            throw new Error('HTTPS_MISMATCH');
+                        } else if (data.details && data.details.type === 'EXEC_ERROR') {
+                            throw new Error(`Connection failed: ${data.details.message}. Please check your configuration.`);
+                        }
+                        throw new Error('Failed to fetch repositories');
+                    }
+
+                    list.innerHTML = '';
+                    if (data.length === 0) {
+                        list.innerHTML = '<li>No repositories found.</li>';
+                    }
+                    data.forEach(repo => {
+                        const item = document.createElement('li');
+                        item.textContent = repo;
+                        list.appendChild(item);
+                    });
+                    // If successful, we might hide setup, or keep it visible/accessible
+                    setupDiv.style.display = 'block';
+                } catch (error) {
+                    console.error('Error fetching repositories:', error);
+                    setupDiv.style.display = 'block'; // Show setup on error so user can fix URL
+                    errorDiv.style.display = 'block';
+                    list.innerHTML = '';
+
+                    if (error.message === 'NOT_INSTALLED') {
+                        errorMsg.textContent = 'The "reg" command line tool is not installed or not found in PATH.';
+                        installInstr.style.display = 'block';
+                    } else if (error.message === 'HTTPS_MISMATCH') {
+                        errorMsg.textContent = 'Connection Error: server gave HTTP response to HTTPS client.';
+                        insecureInstr.style.display = 'block';
+                        // Update content with actual registry URL if available
+                        const currentUrl = document.getElementById('registry-url').value || 'YOUR_REGISTRY_URL';
+                        insecureInstr.innerHTML = insecureInstr.innerHTML.replace('YOUR_REGISTRY_URL', currentUrl);
+                    } else {
+                        errorMsg.textContent = error.message;
+                    }
+                }
+            }
+
+            async function saveRegistryConfig() {
+                const url = document.getElementById('registry-url').value;
+                const username = document.getElementById('registry-username').value;
+                const password = document.getElementById('registry-password').value;
+                const isSecure = document.getElementById('registry-secure').checked;
+                try {
+                    const response = await fetch('/api/config/registry', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url, username, password, isSecure })
+                    });
+                    if (response.ok) {
+                        alert('Configuration saved!');
+                        fetchRepositories();
+                    } else {
+                        alert('Failed to save configuration');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Error saving configuration');
+                }
+            }
+
+            async function loadRegistryConfig() {
+                try {
+                    const res = await fetch('/api/config/registry');
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.url) {
+                            document.getElementById('registry-url').value = data.url;
+                        }
+                        if (data.username) {
+                            document.getElementById('registry-username').value = data.username;
+                        }
+                        if (data.isSecure !== undefined) {
+                            document.getElementById('registry-secure').checked = data.isSecure;
+                        } else {
+                            document.getElementById('registry-secure').checked = false; // Default off
+                        }
+                        // Don't autofill password for security/UX reasons, or could if desired.
+                        // Leaving blank for now.
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            async function loadAllData() {
+                document.getElementById('welcome-message') && (document.getElementById('welcome-message').style.display = 'none');
+                try {
+                    await Promise.all([
+                        fetchNamespaces(),
+                        fetchAndRenderNodes(),
+                        fetchAndRenderDeployments(),
+                        fetchAndRenderPods(),
+                        fetchAndRenderServices(),
+                        fetchAndRenderIngresses(),
+                        fetchAndRenderDaemonSets(),
+                        fetchAndRenderStatefulSets(),
+                        fetchAndRenderJobs(),
+                        fetchAndRenderCronJobs(),
+                        fetchAndRenderConfigMaps(),
+                        fetchAndRenderSecrets(),
+                        loadRegistryConfig(),
+                        fetchRepositories()
+                    ]);
+                    filterByNamespace();
+                } catch (e) {
+                    console.error('Error loading initial data', e);
+                    alert('Error loading initial data: ' + e.message);
+                }
+            }
+
+            async function loadContexts() {
+                try {
+                    const res = await fetch('/api/contexts');
+                    const data = await res.json();
+                    const selector = document.getElementById('context-selector');
+                    selector.innerHTML = '';
+
+                    if (data.contexts && Array.isArray(data.contexts)) {
+                        data.contexts.forEach(ctx => {
+                            const opt = document.createElement('option');
+                            opt.value = ctx;
+                            opt.textContent = ctx;
+                            if (ctx === data.currentContext) {
+                                opt.selected = true;
+                            }
+                            selector.appendChild(opt);
+                        });
+                    }
+                } catch (err) {
+                    console.error('Failed to load contexts', err);
+                }
+            }
+
+            async function switchContext(contextName) {
+                try {
+                    const res = await fetch('/api/contexts/current', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ context: contextName })
+                    });
+                    if (res.ok) {
+                        loadAllData();
+                    } else {
+                        alert('Failed to switch context');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Error switching context');
+                }
+            }
+
+            // Initialize
+            loadContexts().then(() => {
+                // Default view
+                showContent('nodes');
+                loadAllData();
+            });
+        </script>
+</body>
+
+</html>
