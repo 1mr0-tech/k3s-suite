@@ -127,7 +127,8 @@ table {
     margin-bottom: 2em;
 }
 
-th, td {
+th,
+td {
     border: 1px solid var(--border-color);
     padding: 0.5em;
     text-align: left;
@@ -153,26 +154,34 @@ li {
 .modal {
     display: none;
     position: fixed;
-    z-index: 1;
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    /* Ensure it stays on top of FAB (z-index 1000) */
+    left: 0;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: rgba(0,0,0,0.7);
+    background-color: rgba(0, 0, 0, 0.7);
 }
 
 .modal-content {
     background-color: var(--content-bg);
-    margin: 2% auto; /* Reduced margin for top/bottom */
+    margin: 2% auto;
+    /* Reduced margin for top/bottom */
     padding: 20px;
     border: 1px solid var(--border-color);
-    width: 90%; /* Increased width */
-    height: 90vh; /* Fixed height for consistency */
-    display: flex; /* Flex container for layout */
+    width: 90%;
+    /* Increased width */
+    height: 90vh;
+    /* Fixed height for consistency */
+    display: flex;
+    /* Flex container for layout */
     flex-direction: column;
     border-radius: 5px;
-    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2),0 6px 20px 0 rgba(0,0,0,0.19);
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
 .close {
@@ -196,11 +205,14 @@ li {
     border-radius: 5px;
     overflow: auto;
     /* max-height: 60vh; Removed max-height, using flex to fill */
-    flex: 1; /* Fill remaining vertical space */
-    font-family: 'Courier New', Courier, monospace; /* Monospace font for code */
+    flex: 1;
+    /* Fill remaining vertical space */
+    font-family: 'Courier New', Courier, monospace;
+    /* Monospace font for code */
     font-size: 14px;
     margin-bottom: 1em;
-    resize: none; /* Disable manual resize */
+    resize: none;
+    /* Disable manual resize */
     border: 1px solid var(--border-color);
 }
 
@@ -220,4 +232,143 @@ li {
 
 #confirmation-modal p {
     margin-bottom: 20px;
+}
+
+/* Classy Button Styles */
+button,
+.btn-classy {
+    background-color: white;
+    color: #333;
+    border: 1px solid #ddd;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+    text-transform: none;
+    /* Avoid uppercase usually */
+    font-size: 14px;
+}
+
+button:hover,
+.btn-classy:hover {
+    background-color: #f8f9fa;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+button:active,
+.btn-classy:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Primary Action Buttons (e.g. Save, Create) */
+button.primary {
+    background-color: #2196F3;
+    color: white;
+    border: none;
+}
+
+button.primary:hover {
+    background-color: #1976D2;
+}
+
+/* Danger Buttons */
+button.danger {
+    background-color: #f44336;
+    color: white;
+    border: none;
+}
+
+button.danger:hover {
+    background-color: #d32f2f;
+}
+
+/* Floating Action Button (Create Resource) */
+.fab {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    /* Far bottom right */
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: #2196F3;
+    color: white;
+    box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+    border: none;
+    font-size: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    z-index: 1000;
+    line-height: 1;
+    /* Center the + vertically */
+    padding: 0;
+    /* Remove padding to perfect centering */
+}
+
+.fab:hover {
+    background-color: #1976D2;
+    transform: scale(1.1);
+}
+
+.fab-tooltip {
+    position: absolute;
+    left: 70px;
+    background: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    font-size: 14px;
+}
+
+.fab:hover .fab-tooltip {
+    opacity: 1;
+}
+
+/* Modal form inputs polish */
+.modal input[type="text"],
+.modal input[type="password"],
+.modal select {
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    background: #222;
+    color: white;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+}
+
+.modal label {
+    font-weight: bold;
+    color: #ddd;
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* Sidebar button override to keep them looking like sidebar items, not round buttons */
+.sidebar button {
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    box-shadow: none;
+    margin-bottom: 1em;
+    width: 100%;
+    text-align: left;
+}
+
+.sidebar button:hover {
+    background-color: var(--button-hover-bg);
+    transform: none;
 }

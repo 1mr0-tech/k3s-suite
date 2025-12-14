@@ -38,6 +38,35 @@ app.post('/api/config/registry', express.json(), (req, res) => {
     registryConfig.password = password || '';
     registryConfig.isSecure = isSecure === undefined ? false : isSecure;
     res.json({ message: 'Registry URL updated', config: registryConfig });
+    registryConfig.isSecure = isSecure === undefined ? false : isSecure;
+    res.json({ message: 'Registry URL updated', config: registryConfig });
+});
+
+app.post('/api/resources/apply', express.json(), (req, res) => {
+    const { yaml, context, namespace } = req.body;
+    if (!yaml) return res.status(400).json({ error: 'YAML content required' });
+
+    // Use currentContext if not provided
+    const ctx = context || currentContext;
+    if (!ctx) return res.status(400).json({ error: 'No context selected' });
+
+    console.log(`Applying resource to context: ${ctx}, namespace: ${namespace || 'default/yaml-specified'}`);
+
+    // Using kubectl apply via stdin
+    // Assuming kubectl is in PATH (checked by prereq script)
+    // Add namespace flag if provided
+    const nsFlag = namespace ? ` -n "${namespace}"` : '';
+    const child = exec(`kubectl apply -f - --context="${ctx}"${nsFlag}`, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`kubectl error: ${error.message}`);
+            return res.status(500).json({ error: 'Failed to apply resource', details: stderr || error.message });
+        }
+        res.json({ message: 'Resource applied successfully', output: stdout });
+    });
+
+    // Write YAML to stdin
+    child.stdin.write(yaml);
+    child.stdin.end();
 });
 
 app.get('/api/contexts', (req, res) => {
