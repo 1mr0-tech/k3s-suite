@@ -301,6 +301,7 @@
                         <div class="page-header">
                             <h2>Repositories</h2>
                         </div>
+
                         <div id="registry-setup"
                             style="display: none; padding: 20px; border: 1px solid var(--border-color); border-radius: 5px; margin-bottom: 20px;">
                             <h3>Registry Setup</h3>
@@ -327,46 +328,48 @@
                                 <input type="checkbox" id="registry-secure">
                                 <label for="registry-secure">Use Secure Connection (SSL)</label>
                             </div>
+                            <div style="margin-bottom: 10px;">
+                                <label for="registry-timezone" style="display:block; margin-bottom:5px;">Time
+                                    Zone:</label>
+                                <select id="registry-timezone" style="padding: 0.5em; width: 300px;">
+                                    <option value="UTC">UTC</option>
+                                    <option value="America/New_York">Eastern Time (US & Canada)</option>
+                                    <option value="America/Chicago">Central Time (US & Canada)</option>
+                                    <option value="America/Denver">Mountain Time (US & Canada)</option>
+                                    <option value="America/Los_Angeles">Pacific Time (US & Canada)</option>
+                                    <option value="Europe/London">London</option>
+                                    <option value="Europe/Paris">Paris</option>
+                                    <option value="Asia/Tokyo">Tokyo</option>
+                                    <option value="Asia/Calcutta">India Standard Time</option>
+                                </select>
+                            </div>
                             <button onclick="saveRegistryConfig()">Save Configuration</button>
+                            <button onclick="document.getElementById('registry-setup').style.display='none'"
+                                style="margin-left: 10px; background: transparent; border: 1px solid #555;">Cancel</button>
                         </div>
+
                         <div id="registry-error"
                             style="display: none; padding: 20px; background-color: #330000; border: 1px solid #ff4444; border-radius: 5px; margin-bottom: 20px; color: #ffcccc;">
                             <h3 style="margin-top: 0;">Error</h3>
                             <p id="registry-error-msg"></p>
-                            <div id="reg-install-instructions"
-                                style="display: none; margin-top: 10px; background-color: #1a0000; padding: 10px; border-radius: 3px; font-family: monospace;">
-                                <p>To view repositories, you need to install the 'reg' tool.</p>
-                                <p><strong>Mac (Homebrew):</strong><br>brew install reg</p>
-                                <p><strong>Linux:</strong><br>curl -jfL
-                                    https://github.com/genuinetools/reg/releases/download/v0.16.1/reg-linux-amd64 -o
-                                    /usr/local/bin/reg && chmod +x /usr/local/bin/reg</p>
+                            <!-- ... instructions ... -->
+                        </div>
+
+                        <!-- New Registry UI -->
+                        <div id="registry-container">
+                            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                                <input type="text" id="repo-search" placeholder="Search repositories..."
+                                    style="flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #333; color: white;"
+                                    onkeyup="filterRepositories()">
+                                <button class="btn btn-classy" onclick="loadRegistryImages()">Refresh</button>
+                                <button class="btn btn-classy"
+                                    onclick="document.getElementById('registry-setup').style.display='block'">Settings</button>
                             </div>
-                            <div id="docker-insecure-instructions"
-                                style="display: none; margin-top: 10px; background-color: #1a0000; padding: 10px; border-radius: 3px; font-family: monospace; white-space: pre-wrap;">
-                                <strong style="color: #ffaa00;">💡 Likely Solution: Docker's Insecure Registries
-                                    Configuration</strong>
 
-                                The most common reason for this behavior is that the Docker Daemon enforces HTTPS. You
-                                need
-                                to tell Docker that your registry (e.g., localhost:8090) is an insecure (HTTP) registry.
-
-                                1. <strong>Locate/Create daemon.json</strong>:
-                                Linux: <code>/etc/docker/daemon.json</code>
-                                Windows: <code>C:\ProgramData\Docker\config\daemon.json</code>
-                                macOS: Docker Desktop > Settings > Docker Engine
-
-                                2. <strong>Add the insecure-registries Entry</strong>:
-                                <code>{
-      "insecure-registries": ["YOUR_REGISTRY_URL"]
-    }</code>
-
-                                3. <strong>Restart Docker Daemon</strong>:
-                                Linux: <code>sudo systemctl restart docker</code>
-                                Mac/Windows: Restart Docker Desktop.
+                            <div id="registry-list" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- Repositories populated here -->
                             </div>
                         </div>
-                        <button onclick="fetchRepositories()" style="margin-bottom: 1em;">Refresh</button>
-                        <ul id="repositories-list"></ul>
                     </div>
                 </div>
             </div>
@@ -439,7 +442,8 @@
                     <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <label style="margin: 0; color: #ddd;">Target Namespace:</label>
-                            <select id="create-target-ns" style="width: 200px; margin: 0;">
+                            <select id="create-target-ns" style="width: 200px; margin: 0;"
+                                onchange="updateYamlNamespace()">
                                 <option value="">Use YAML / Default</option>
                                 <!-- populated by js -->
                             </select>
@@ -751,8 +755,10 @@
                         <td>${name}</td>
                         <td>${status}</td>
                         <td>${node}</td>
-                        <td><button onclick="fetchAndShowYaml('/api/pods/${namespace}/${name}/yaml')">View YAML</button></td>
-                    `;
+                        <td>
+                        <button class="btn btn-sm btn-classy" onclick="fetchAndShowYaml('/api/pods/${namespace}/${name}/yaml')">View YAML</button>
+                        <button class="btn btn-sm btn-classy" style="margin-left: 5px;" onclick="openLogsModal('${namespace}', '${name}')">View Logs</button>
+                    </td>`;
                         tableBody.appendChild(row);
                     });
                 }
@@ -981,62 +987,153 @@
                     fetchAndRenderGeneric('secrets', renderSecrets, '#secrets-table tbody');
                 }
 
-                async function fetchRepositories() {
-                    const list = document.querySelector('#repositories-list');
-                    const setupDiv = document.getElementById('registry-setup');
-                    const errorDiv = document.getElementById('registry-error');
-                    const errorMsg = document.getElementById('registry-error-msg');
-                    const installInstr = document.getElementById('reg-install-instructions');
-                    const insecureInstr = document.getElementById('docker-insecure-instructions');
+                let allRepositories = [];
 
-                    list.innerHTML = 'Loading...';
+                async function loadRegistryImages() {
+                    const list = document.getElementById('registry-list');
+                    const errorDiv = document.getElementById('registry-error');
+                    const setupDiv = document.getElementById('registry-setup');
+
                     errorDiv.style.display = 'none';
-                    installInstr.style.display = 'none';
-                    insecureInstr.style.display = 'none';
+                    // Don't auto-hide setup here, let user close it or success close it
+
+                    list.innerHTML = '<div style="color: #aaa;">Loading repositories...</div>';
 
                     try {
-                        const response = await fetch('/api/repositories');
-                        const data = await response.json();
+                        const res = await fetch('/api/repositories');
+                        if (!res.ok) {
+                            const errData = await res.json();
+                            const errMsg = errData.details?.message || errData.error || 'Unknown error';
 
-                        if (!response.ok) {
-                            if (data.details && data.details.type === 'NOT_INSTALLED') {
-                                throw new Error('NOT_INSTALLED');
-                            } else if (data.details && data.details.type === 'HTTPS_MISMATCH') {
-                                throw new Error('HTTPS_MISMATCH');
-                            } else if (data.details && data.details.type === 'EXEC_ERROR') {
-                                throw new Error(`Connection failed: ${data.details.message}. Please check your configuration.`);
+                            // Check for configuration error
+                            if (errMsg.includes('pass the domain') || errMsg.includes('reg command not found')) {
+                                document.getElementById('registry-error-msg').innerText = "Please configure your Registry details.";
+                                errorDiv.style.backgroundColor = '#332b00'; // Warning color instead of red
+                                errorDiv.style.borderColor = '#ffcc00';
+                                errorDiv.style.color = '#ffffcc';
+                            } else {
+                                document.getElementById('registry-error-msg').innerText = errMsg;
+                                errorDiv.style.backgroundColor = '#330000';
+                                errorDiv.style.borderColor = '#ff4444';
+                                errorDiv.style.color = '#ffcccc';
                             }
-                            throw new Error('Failed to fetch repositories');
+
+                            errorDiv.style.display = 'block';
+                            list.innerHTML = '';
+
+                            // Show setup if it's a connection/config error
+                            setupDiv.style.display = 'block';
+                            return;
                         }
 
+                        // Handle 200 OK
+                        allRepositories = await res.json();
+                        renderRepositories();
+                        // If successful, we can hide setup/error
+                        setupDiv.style.display = 'none';
+                        errorDiv.style.display = 'none';
+
+                    } catch (e) {
                         list.innerHTML = '';
-                        if (data.length === 0) {
-                            list.innerHTML = '<li>No repositories found.</li>';
-                        }
-                        data.forEach(repo => {
-                            const item = document.createElement('li');
-                            item.textContent = repo;
-                            list.appendChild(item);
-                        });
-                        // If successful, we might hide setup, or keep it visible/accessible
-                        setupDiv.style.display = 'block';
-                    } catch (error) {
-                        console.error('Error fetching repositories:', error);
-                        setupDiv.style.display = 'block'; // Show setup on error so user can fix URL
+                        document.getElementById('registry-error-msg').innerText = e.message;
                         errorDiv.style.display = 'block';
-                        list.innerHTML = '';
+                        setupDiv.style.display = 'block';
+                    }
+                }
 
-                        if (error.message === 'NOT_INSTALLED') {
-                            errorMsg.textContent = 'The "reg" command line tool is not installed or not found in PATH.';
-                            installInstr.style.display = 'block';
-                        } else if (error.message === 'HTTPS_MISMATCH') {
-                            errorMsg.textContent = 'Connection Error: server gave HTTP response to HTTPS client.';
-                            insecureInstr.style.display = 'block';
-                            // Update content with actual registry URL if available
-                            const currentUrl = document.getElementById('registry-url').value || 'YOUR_REGISTRY_URL';
-                            insecureInstr.innerHTML = insecureInstr.innerHTML.replace('YOUR_REGISTRY_URL', currentUrl);
-                        } else {
-                            errorMsg.textContent = error.message;
+                // Alias for initial load
+                const fetchRepositories = loadRegistryImages;
+
+                function renderRepositories(filterText = '') {
+                    const container = document.getElementById('registry-list');
+                    container.innerHTML = '';
+
+                    const filtered = allRepositories.filter(r => r.includes(filterText));
+
+                    if (filtered.length === 0) {
+                        container.innerHTML = '<div style="color: #aaa;">No repositories found.</div>';
+                        return;
+                    }
+
+                    filtered.forEach(repo => {
+                        const item = document.createElement('div');
+                        item.className = 'repo-item';
+                        item.style.border = '1px solid #444';
+                        item.style.borderRadius = '5px';
+                        item.style.background = '#2a2a2a';
+                        item.style.overflow = 'hidden';
+
+                        // Header
+                        const header = document.createElement('div');
+                        header.style.padding = '15px';
+                        header.style.cursor = 'pointer';
+                        header.style.display = 'flex';
+                        header.style.justifyContent = 'space-between';
+                        header.style.alignItems = 'center';
+                        header.style.background = '#333';
+                        header.innerHTML = `<strong>${repo}</strong> <span style="color: #888;">▼</span>`;
+
+                        header.onclick = () => toggleRepoTags(repo, item);
+
+                        // Tags Container (Hidden by default)
+                        const tagsContainer = document.createElement('div');
+                        tagsContainer.id = `tags-${repo}`;
+                        tagsContainer.style.display = 'none';
+                        tagsContainer.style.padding = '10px';
+                        tagsContainer.style.background = '#222';
+                        tagsContainer.innerHTML = '<div style="color: #888; font-style: italic;">Loading tags...</div>';
+
+                        item.appendChild(header);
+                        item.appendChild(tagsContainer);
+                        container.appendChild(item);
+                    });
+                }
+
+                function filterRepositories() {
+                    const text = document.getElementById('repo-search').value;
+                    renderRepositories(text);
+                }
+
+                async function toggleRepoTags(repo, itemElement) {
+                    const tagsDiv = document.getElementById(`tags-${repo}`);
+                    const isExpanded = tagsDiv.style.display === 'block';
+
+                    // Toggle visibility
+                    tagsDiv.style.display = isExpanded ? 'none' : 'block';
+
+                    // Rotate arrow
+                    const arrow = itemElement.querySelector('span');
+                    arrow.innerHTML = isExpanded ? '▼' : '▲';
+
+                    if (!isExpanded && !tagsDiv.dataset.loaded) {
+                        // Fetch if opening and not loaded
+                        try {
+                            const res = await fetch(`/api/repositories/${repo}/tags`);
+                            const data = await res.json();
+
+                            if (data.tags.length === 0) {
+                                tagsDiv.innerHTML = '<div style="padding: 5px; color: #888;">No tags found.</div>';
+                            } else {
+                                const tz = document.getElementById('registry-timezone').value || 'UTC';
+                                let html = '<select style="width: 100%; padding: 10px; background: #111; color: #0f0; border: 1px solid #444; font-family: monospace;">';
+                                data.tags.forEach(t => {
+                                    let dateStr = 'Unknown';
+                                    try {
+                                        if (t.created && new Date(t.created).getTime() > 0) {
+                                            dateStr = new Date(t.created).toLocaleString('en-US', { timeZone: tz });
+                                        } else {
+                                            dateStr = 'Date unavailable';
+                                        }
+                                    } catch (e) { dateStr = 'Invalid Date'; }
+
+                                    html += `<option>${t.name} (Pushed: ${dateStr})</option>`;
+                                });
+                                html += '</select>';
+                                tagsDiv.innerHTML = html;
+                            }
+                            tagsDiv.dataset.loaded = 'true';
+                        } catch (e) {
+                            tagsDiv.innerHTML = `<div style="color: red;">Error loading tags: ${e.message}</div>`;
                         }
                     }
                 }
@@ -1046,11 +1143,13 @@
                     const username = document.getElementById('registry-username').value;
                     const password = document.getElementById('registry-password').value;
                     const isSecure = document.getElementById('registry-secure').checked;
+                    const timezone = document.getElementById('registry-timezone').value;
+
                     try {
                         const response = await fetch('/api/config/registry', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ url, username, password, isSecure })
+                            body: JSON.stringify({ url, username, password, isSecure, timezone })
                         });
                         if (response.ok) {
                             alert('Configuration saved!');
@@ -1079,6 +1178,9 @@
                                 document.getElementById('registry-secure').checked = data.isSecure;
                             } else {
                                 document.getElementById('registry-secure').checked = false; // Default off
+                            }
+                            if (data.timezone) {
+                                document.getElementById('registry-timezone').value = data.timezone;
                             }
                             // Don't autofill password for security/UX reasons, or could if desired.
                             // Leaving blank for now.
@@ -1516,6 +1618,7 @@ spec:
                     const type = document.getElementById('template-type-select').value;
                     if (TEMPLATES[type]) {
                         setCreateYaml(TEMPLATES[type]);
+                        updateYamlNamespace(); // Sync with currently selected target NS
                     }
                 }
 
@@ -1567,9 +1670,32 @@ spec:
                         // Strip specific metadata to make it cloneable
                         // Simple regex or just dump as is and user edits
                         setCreateYaml(text);
+                        updateYamlNamespace(); // Sync with currently selected target NS
                     } catch (e) {
                         alert('Failed to load YAML');
                     }
+                }
+
+                function updateYamlNamespace() {
+                    const targetNs = document.getElementById('create-target-ns').value;
+                    if (!targetNs) return;
+
+                    let yaml = getCreateYaml();
+                    if (!yaml) return;
+
+                    // Match "namespace: value" inside metadata logic tentatively
+                    // We assume standard indentation (2 spaces) for metadata children usually.
+
+                    if (yaml.match(/^\s*namespace:\s*.+$/m)) {
+                        // Replace existing namespace line
+                        yaml = yaml.replace(/(^\s*namespace:\s*)(.+)$/m, `$1${targetNs}`);
+                    } else {
+                        // If namespace doesn't exist, try to inject it under metadata
+                        if (yaml.match(/^\s*metadata:\s*$/m)) {
+                            yaml = yaml.replace(/(^\s*metadata:\s*$)/m, `$1\n  namespace: ${targetNs}`);
+                        }
+                    }
+                    setCreateYaml(yaml);
                 }
 
                 async function applyResource() {
@@ -1585,7 +1711,7 @@ spec:
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 yaml: yamlContent,
-                                context: currentContext, // Be sure this variable is available globally
+                                context: document.getElementById('context-selector').value,
                                 namespace: targetNs
                             })
                         });
@@ -1610,6 +1736,104 @@ spec:
                     loadAllData();
                 });
             </script>
+            <!-- Logs Modal -->
+            <div id="logs-modal" class="modal">
+                <div class="modal-content"
+                    style="width: 80%; max-width: 1000px; height: 80vh; display: flex; flex-direction: column;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3>Pod Logs: <span id="logs-pod-name"></span></h3>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label style="display: flex; align-items: center; gap: 5px; font-size: 0.9em;">
+                                <input type="checkbox" id="logs-auto-refresh"> Auto-refresh (3s)
+                            </label>
+                            <span class="close" onclick="closeLogsModal()">&times;</span>
+                        </div>
+                    </div>
+                    <div id="logs-container"
+                        style="flex-grow: 1; overflow: hidden; background: #1e1e1e; border-radius: 4px; border: 1px solid #333;">
+                        <pre id="logs-content"
+                            style="margin: 0; padding: 15px; width: 100%; height: 100%; overflow: auto; color: #00ff00; font-family: 'Courier New', Courier, monospace; font-size: 14px; white-space: pre-wrap; box-sizing: border-box;"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                let logsInterval = null;
+                let currentLogPod = null;
+                let currentLogNamespace = null;
+
+                function openLogsModal(namespace, name) {
+                    currentLogPod = name;
+                    currentLogNamespace = namespace;
+                    document.getElementById('logs-pod-name').innerText = name;
+                    document.getElementById('logs-content').innerText = 'Loading logs...';
+                    document.getElementById('logs-modal').style.display = 'block';
+
+                    document.getElementById('logs-auto-refresh').checked = false; // Default off
+                    if (logsInterval) clearInterval(logsInterval);
+
+                    fetchPodLogs();
+
+                    // Checkbox listener
+                    document.getElementById('logs-auto-refresh').onchange = (e) => {
+                        if (e.target.checked) {
+                            fetchPodLogs(); // Fetch immediately
+                            logsInterval = setInterval(fetchPodLogs, 3000);
+                        } else {
+                            clearInterval(logsInterval);
+                        }
+                    };
+                }
+
+                function closeLogsModal() {
+                    document.getElementById('logs-modal').style.display = 'none';
+                    if (logsInterval) clearInterval(logsInterval);
+                    currentLogPod = null;
+                    currentLogNamespace = null;
+                }
+
+                async function fetchPodLogs() {
+                    if (!currentLogPod || !currentLogNamespace) return;
+
+                    try {
+                        const context = document.getElementById('context-selector').value; // Use global selector
+                        const res = await fetch(`/api/pods/${currentLogNamespace}/${currentLogPod}/logs?tail=200`, {
+                            headers: { 'x-k8s-context': context }
+                        });
+
+                        if (res.ok) {
+                            const text = await res.text();
+                            const logsContent = document.getElementById('logs-content');
+                            const wasAtBottom = logsContent.scrollHeight - logsContent.scrollTop === logsContent.clientHeight;
+
+                            logsContent.innerText = text || 'No logs found.';
+
+                            if (wasAtBottom) {
+                                logsContent.scrollTop = logsContent.scrollHeight;
+                            }
+                        } else {
+                            document.getElementById('logs-content').innerText = 'Failed to load logs.';
+                        }
+                    } catch (err) {
+                        console.error('Error fetching logs:', err);
+                        document.getElementById('logs-content').innerText = 'Error fetching logs.';
+                    }
+                }
+
+                // Close modal if clicking outside
+                window.onclick = function (event) {
+                    const createModal = document.getElementById('create-resource-modal');
+                    const logsModal = document.getElementById('logs-modal');
+                    if (event.target == createModal) {
+                        closeCreateModal();
+                    }
+                    if (event.target == logsModal) {
+                        closeLogsModal();
+                    }
+                }
+            </script>
+
             <!-- Footer -->
             <footer style="text-align: center; padding: 20px; color: #666; font-size: 0.9em; margin-top: auto;">
                 Made with &lt;3 by @imranfosec
