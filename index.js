@@ -429,6 +429,83 @@ app.post('/api/yaml', express.json(), async (req, res) => {
     }
 });
 
+app.post('/api/deployments/deploy', express.json(), async (req, res) => {
+    const { image, name, namespace, port, replicas } = req.body;
+
+    if (!image || !name || !namespace) {
+        return res.status(400).json({ error: 'Missing required fields: image, name, namespace' });
+    }
+
+    try {
+        const appsV1Api = getClient(k8s.AppsV1Api, currentContext);
+
+        // Check if deployment exists
+        let deploymentExists = false;
+        try {
+            await appsV1Api.readNamespacedDeployment(name, namespace);
+            deploymentExists = true;
+        } catch (err) {
+            if (err.statusCode !== 404) {
+                throw err;
+            }
+        }
+
+        if (deploymentExists) {
+            // Update existing deployment - just change the image
+            const deployment = await appsV1Api.readNamespacedDeployment(name, namespace);
+            const spec = deployment.body;
+
+            // Update image in first container
+            if (spec.spec.template.spec.containers && spec.spec.template.spec.containers.length > 0) {
+                spec.spec.template.spec.containers[0].image = image;
+            }
+
+            await appsV1Api.replaceNamespacedDeployment(name, namespace, spec);
+            res.json({ message: `Deployment '${name}' updated with image: ${image}` });
+        } else {
+            // Create new deployment
+            const deploymentManifest = {
+                apiVersion: 'apps/v1',
+                kind: 'Deployment',
+                metadata: {
+                    name: name,
+                    namespace: namespace
+                },
+                spec: {
+                    replicas: replicas || 1,
+                    selector: {
+                        matchLabels: {
+                            app: name
+                        }
+                    },
+                    template: {
+                        metadata: {
+                            labels: {
+                                app: name
+                            }
+                        },
+                        spec: {
+                            containers: [{
+                                name: name,
+                                image: image,
+                                ports: [{
+                                    containerPort: port || 80
+                                }]
+                            }]
+                        }
+                    }
+                }
+            };
+
+            await appsV1Api.createNamespacedDeployment(namespace, deploymentManifest);
+            res.json({ message: `Deployment '${name}' created with image: ${image}` });
+        }
+    } catch (err) {
+        console.error('Deploy error:', err);
+        res.status(500).json({ error: 'Failed to deploy', details: err.message });
+    }
+});
+
 app.get('/api/network-map', async (req, res) => {
     try {
         const namespace = req.query.namespace || 'all';

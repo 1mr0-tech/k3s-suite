@@ -38,20 +38,31 @@ async function fetchRegistry(url, options = {}) {
 function getRepositories(registryUrl, username, password, isSecure, callback) {
     // V2 Catalog API: /v2/_catalog
     const protocol = isSecure ? 'https' : 'http';
-    const url = `${protocol}://${registryUrl}/v2/_catalog`;
+    const baseUrl = `${protocol}://${registryUrl}`;
+    const catalogUrl = `${baseUrl}/v2/_catalog`;
+    const checkUrl = `${baseUrl}/v2/`;
 
     (async () => {
         try {
-            // Setup custom agent not easily possible with global fetch without extra libs everywhere.
-            // Using logic: if !isSecure, we might need NODE_TLS_REJECT_UNAUTHORIZED for https with bad cert.
-            // If http, it's fine.
-            if (isSecure && isSecure !== true) {
-                // Placeholder for any complex logic if needed
+            console.log(`Debug: Checking V2 support at ${checkUrl}`);
+
+            // Step 1: Check if it's a V2 registry (Root check)
+            try {
+                await fetchRegistry(checkUrl, { username, password, isSecure });
+            } catch (err) {
+                // If 401, it's a V2 registry but auth required (which is good/expected if auth enabled)
+                // If 200, it's V2. 
+                // If 404, it might not be V2 or path wrong.
+                // Assuming connect error is the only "Fatal" one here.
+                if (err.message.includes('ECONNREFUSED')) {
+                    return callback({ type: 'CONNECTION_REFUSED', message: `Could not connect to registry at ${registryUrl}. Is it running?` }, null);
+                }
+                // Continue anyway to try catalog, or fail?
+                // Standard V2 check: GET /v2/ should return 200 or 401.
             }
 
-            console.log(`Debug: Fetching repositories from ${url}`);
-
-            const res = await fetchRegistry(url, { username, password, isSecure });
+            console.log(`Debug: Fetching catalog from ${catalogUrl}`);
+            const res = await fetchRegistry(catalogUrl, { username, password, isSecure });
             const data = await res.json();
 
             // data.repositories is an array of strings
@@ -65,9 +76,9 @@ function getRepositories(registryUrl, username, password, isSecure, callback) {
                 return callback({ type: 'CONNECTION_REFUSED', message: `Could not connect to registry at ${registryUrl}. Is it running?` }, null);
             }
             if (err.message.includes('404')) {
-                console.warn('Registry returned 404 for _catalog. This might mean the registry has disabled catalog listing or it is not a V2 compliant registry.');
-                // Return empty list instead of crashing UI, but with a warning in logs
-                return callback({ type: 'CATALOG_NOT_FOUND', message: 'Registry connected but Catalog API not found (404). Listing disabled?' }, null);
+                console.warn('Registry returned 404 for _catalog. This means listing is disabled.');
+                // Return special error type so UI can show manual entry
+                return callback({ type: 'CATALOG_DISABLED', message: 'Registry Connected. Repository listing is disabled/unsupported on this registry.' }, null);
             }
 
             callback({ type: 'FETCH_ERROR', message: `Failed to fetch: ${err.message}` }, null);
