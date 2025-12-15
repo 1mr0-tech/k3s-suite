@@ -10,6 +10,7 @@ app.get('/', (req, res) => {
 });
 
 const k8s = require('./k8s');
+const k8sClient = require('@kubernetes/client-node'); // Kubernetes client library
 
 const reg = require('./reg');
 const { exec } = require('child_process');
@@ -437,13 +438,13 @@ app.post('/api/deployments/deploy', express.json(), async (req, res) => {
     }
 
     try {
-        const kc = new k8s.KubeConfig();
+        const kc = new k8sClient.KubeConfig();
         kc.loadFromDefault();
         if (currentContext) {
             kc.setCurrentContext(currentContext);
         }
-        const appsV1Api = kc.makeApiClient(k8s.AppsV1Api);
-        const coreV1Api = kc.makeApiClient(k8s.CoreV1Api);
+        const appsV1Api = kc.makeApiClient(k8sClient.AppsV1Api);
+        const coreV1Api = kc.makeApiClient(k8sClient.CoreV1Api);
 
         // Check if deployment exists
         let deploymentExists = false;
