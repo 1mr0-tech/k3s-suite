@@ -589,6 +589,21 @@
                         <input type="number" id="deploy-replicas" value="1" min="1"
                             style="width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #444;">
                     </div>
+                    <div style="margin-bottom: 15px;">
+                        <label style="display:block; margin-bottom:5px;">Expose Service:</label>
+                        <select id="deploy-expose-type"
+                            style="width: 100%; padding: 8px; background: #333; color: white; border: 1px solid #444;">
+                            <option value="none">No Service (Internal Only)</option>
+                            <option value="clusterip">ClusterIP (Internal)</option>
+                            <option value="nodeport">NodePort (External)</option>
+                            <option value="loadbalancer">LoadBalancer (Cloud)</option>
+                        </select>
+                        <small style="color: #888; display: block; margin-top: 5px;">
+                            ClusterIP: Internal cluster access only<br>
+                            NodePort: Accessible on node IP:port<br>
+                            LoadBalancer: Cloud provider load balancer
+                        </small>
+                    </div>
                     <div class="modal-actions" style="justify-content: center;">
                         <button class="btn-classy primary" onclick="confirmDeploy()">Deploy</button>
                         <button class="btn-classy" onclick="closeDeployModal()">Cancel</button>
@@ -1324,6 +1339,7 @@
                     const namespace = document.getElementById('deploy-namespace').value;
                     const port = parseInt(document.getElementById('deploy-port').value);
                     const replicas = parseInt(document.getElementById('deploy-replicas').value);
+                    const exposeType = document.getElementById('deploy-expose-type').value;
 
                     if (!name) {
                         alert('Please enter a deployment name');
@@ -1334,7 +1350,7 @@
                         const response = await fetch('/api/deployments/deploy', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ image, name, namespace, port, replicas })
+                            body: JSON.stringify({ image, name, namespace, port, replicas, exposeType })
                         });
 
                         if (response.ok) {

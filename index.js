@@ -430,14 +430,20 @@ app.post('/api/yaml', express.json(), async (req, res) => {
 });
 
 app.post('/api/deployments/deploy', express.json(), async (req, res) => {
-    const { image, name, namespace, port, replicas } = req.body;
+    const { image, name, namespace, port, replicas, exposeType } = req.body;
 
     if (!image || !name || !namespace) {
         return res.status(400).json({ error: 'Missing required fields: image, name, namespace' });
     }
 
     try {
-        const appsV1Api = getClient(k8s.AppsV1Api, currentContext);
+        const kc = new k8s.KubeConfig();
+        kc.loadFromDefault();
+        if (currentContext) {
+            kc.setCurrentContext(currentContext);
+        }
+        const appsV1Api = kc.makeApiClient(k8s.AppsV1Api);
+        const coreV1Api = kc.makeApiClient(k8s.CoreV1Api);
 
         // Check if deployment exists
         let deploymentExists = false;
@@ -461,6 +467,12 @@ app.post('/api/deployments/deploy', express.json(), async (req, res) => {
             }
 
             await appsV1Api.replaceNamespacedDeployment(name, namespace, spec);
+
+            // Update service if exposeType changed
+            if (exposeType && exposeType !== 'none') {
+                await createOrUpdateService(coreV1Api, name, namespace, port, exposeType);
+            }
+
             res.json({ message: `Deployment '${name}' updated with image: ${image}` });
         } else {
             // Create new deployment
@@ -498,6 +510,12 @@ app.post('/api/deployments/deploy', express.json(), async (req, res) => {
             };
 
             await appsV1Api.createNamespacedDeployment(namespace, deploymentManifest);
+
+            // Create service if requested
+            if (exposeType && exposeType !== 'none') {
+                await createOrUpdateService(coreV1Api, name, namespace, port, exposeType);
+            }
+
             res.json({ message: `Deployment '${name}' created with image: ${image}` });
         }
     } catch (err) {
@@ -505,6 +523,41 @@ app.post('/api/deployments/deploy', express.json(), async (req, res) => {
         res.status(500).json({ error: 'Failed to deploy', details: err.message });
     }
 });
+
+async function createOrUpdateService(coreV1Api, name, namespace, port, exposeType) {
+    const serviceManifest = {
+        apiVersion: 'v1',
+        kind: 'Service',
+        metadata: {
+            name: name,
+            namespace: namespace
+        },
+        spec: {
+            selector: {
+                app: name
+            },
+            ports: [{
+                protocol: 'TCP',
+                port: port || 80,
+                targetPort: port || 80
+            }],
+            type: exposeType === 'nodeport' ? 'NodePort' : exposeType === 'loadbalancer' ? 'LoadBalancer' : 'ClusterIP'
+        }
+    };
+
+    try {
+        // Try to update existing service
+        await coreV1Api.readNamespacedService(name, namespace);
+        await coreV1Api.replaceNamespacedService(name, namespace, serviceManifest);
+    } catch (err) {
+        if (err.statusCode === 404) {
+            // Create new service
+            await coreV1Api.createNamespacedService(namespace, serviceManifest);
+        } else {
+            throw err;
+        }
+    }
+}
 
 app.get('/api/network-map', async (req, res) => {
     try {
