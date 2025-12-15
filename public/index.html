@@ -694,7 +694,9 @@
                 }
 
                 function checkPassword() {
-                    const input = document.getElementById('password-input').value;
+                    const input = document.getElementById('password-input').value.trim();
+                    const errorDiv = document.getElementById('password-error');
+
                     if (input === EDIT_PASSWORD) {
                         // Correct password - enable editing
                         closePasswordModal();
@@ -706,10 +708,15 @@
                         document.getElementById('edit-yaml-btn').style.display = 'none';
                         document.getElementById('save-yaml-btn').style.display = 'inline-block';
                     } else {
-                        // Wrong password
-                        document.getElementById('password-error').style.display = 'block';
+                        // Wrong password - show error and reset
+                        errorDiv.style.display = 'block';
                         document.getElementById('password-input').value = '';
                         document.getElementById('password-input').focus();
+
+                        // Hide error after 2 seconds
+                        setTimeout(() => {
+                            errorDiv.style.display = 'none';
+                        }, 2000);
                     }
                 }
 
