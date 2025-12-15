@@ -1,19 +1,64 @@
 const k8s = require('@kubernetes/client-node');
 const yaml = require('js-yaml');
 
+const fs = require('fs');
+
+// Helper to load kubeconfig with fallback to k3s default
+function loadConfig(kc) {
+    try {
+        kc.loadFromDefault();
+        console.log('KubeConfig loaded from default sources.');
+    } catch (e) {
+        console.warn('Failed to load default KubeConfig:', e.message);
+    }
+
+    // Check if we are in a bad state ("loaded-context" is often a placeholder when nothing real is loaded)
+    // or if no clusters found.
+    const isPlaceholderContext = kc.currentContext === 'loaded-context';
+    const noClusters = kc.clusters.length === 0;
+
+    if (noClusters || isPlaceholderContext) {
+        console.log(`Default config yielded no useful context (Clusters: ${kc.clusters.length}, Context: ${kc.currentContext}). Attempting fallback to k3s...`);
+
+        const k3sConfigPath = '/etc/rancher/k3s/k3s.yaml';
+        if (fs.existsSync(k3sConfigPath)) {
+            try {
+                // Check read permissions
+                fs.accessSync(k3sConfigPath, fs.constants.R_OK);
+
+                kc.loadFromFile(k3sConfigPath);
+                console.log('Successfully loaded k3s config from /etc/rancher/k3s/k3s.yaml');
+            } catch (err) {
+                if (err.code === 'EACCES') {
+                    console.error('CRITICAL: Found k3s config at /etc/rancher/k3s/k3s.yaml but CANNOT READ IT. Permission denied.');
+                    console.error('Try running with sudo or `chmod 644 /etc/rancher/k3s/k3s.yaml`');
+                } else {
+                    console.error('Found k3s config but failed to load it:', err.message);
+                }
+            }
+        } else {
+            console.log('No k3s config found at /etc/rancher/k3s/k3s.yaml');
+        }
+    }
+}
+
 // Helper to get a fresh client instance with latest config
 function getClient(ApiConstructor, contextName) {
     const kc = new k8s.KubeConfig();
-    kc.loadFromDefault();
+    loadConfig(kc);
     if (contextName) {
-        kc.setCurrentContext(contextName);
+        try {
+            kc.setCurrentContext(contextName);
+        } catch (e) {
+            console.error(`Failed to set context ${contextName}: ${e.message}`);
+        }
     }
     return kc.makeApiClient(ApiConstructor);
 }
 
 function getContexts() {
     const kc = new k8s.KubeConfig();
-    kc.loadFromDefault();
+    loadConfig(kc);
     return {
         contexts: kc.contexts.map(c => c.name),
         currentContext: kc.currentContext
