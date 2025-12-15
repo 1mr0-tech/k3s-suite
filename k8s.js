@@ -1,19 +1,47 @@
 const k8s = require('@kubernetes/client-node');
 const yaml = require('js-yaml');
 
+const fs = require('fs');
+
+// Helper to load kubeconfig with fallback to k3s default
+function loadConfig(kc) {
+    try {
+        kc.loadFromDefault();
+    } catch (e) {
+        // Ignore error if default load fails
+    }
+    
+    // If no clusters found (meaning default load didn't find anything useful)
+    // check if k3s config exists and use it
+    if (kc.clusters.length === 0) {
+        const k3sConfigPath = '/etc/rancher/k3s/k3s.yaml';
+        if (fs.existsSync(k3sConfigPath)) {
+            try {
+                kc.loadFromFile(k3sConfigPath);
+            } catch (err) {
+                console.error('Found k3s config but failed to load it (likely permission error):', err.message);
+            }
+        }
+    }
+}
+
 // Helper to get a fresh client instance with latest config
 function getClient(ApiConstructor, contextName) {
     const kc = new k8s.KubeConfig();
-    kc.loadFromDefault();
+    loadConfig(kc);
     if (contextName) {
-        kc.setCurrentContext(contextName);
+        try {
+            kc.setCurrentContext(contextName);
+        } catch (e) {
+            console.error(`Failed to set context ${contextName}: ${e.message}`);
+        }
     }
     return kc.makeApiClient(ApiConstructor);
 }
 
 function getContexts() {
     const kc = new k8s.KubeConfig();
-    kc.loadFromDefault();
+    loadConfig(kc);
     return {
         contexts: kc.contexts.map(c => c.name),
         currentContext: kc.currentContext
