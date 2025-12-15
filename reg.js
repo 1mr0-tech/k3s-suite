@@ -45,14 +45,11 @@ function getRepositories(registryUrl, username, password, isSecure, callback) {
             // Setup custom agent not easily possible with global fetch without extra libs everywhere.
             // Using logic: if !isSecure, we might need NODE_TLS_REJECT_UNAUTHORIZED for https with bad cert.
             // If http, it's fine.
-            if (isSecure && isSecure !== true) { // Wait, isSecure is boolean. If false, it could be HTTP or HTTPS-insecure? 
-                // Previous code: if !isSecure flags += ' --force-non-ssl' (which usually means allow HTTP)
-                // We'll assume isSecure=false means HTTP or HTTPS with allow-insecure.
-                // But usually:
-                // isSecure=true -> HTTPS, verify cert
-                // isSecure=false -> HTTP or HTTPS (no verify)
-                // Let's assume HTTP if isSecure is false, or at least try.
+            if (isSecure && isSecure !== true) {
+                // Placeholder for any complex logic if needed
             }
+
+            console.log(`Debug: Fetching repositories from ${url}`);
 
             const res = await fetchRegistry(url, { username, password, isSecure });
             const data = await res.json();
@@ -62,11 +59,18 @@ function getRepositories(registryUrl, username, password, isSecure, callback) {
 
         } catch (err) {
             console.error('Error fetching repositories:', err);
+
             // Map common errors for UI
             if (err.message.includes('ECONNREFUSED')) {
-                return callback({ type: 'CONNECTION_REFUSED', message: 'Could not connect to registry' }, null);
+                return callback({ type: 'CONNECTION_REFUSED', message: `Could not connect to registry at ${registryUrl}. Is it running?` }, null);
             }
-            callback({ type: 'FETCH_ERROR', message: err.message }, null);
+            if (err.message.includes('404')) {
+                console.warn('Registry returned 404 for _catalog. This might mean the registry has disabled catalog listing or it is not a V2 compliant registry.');
+                // Return empty list instead of crashing UI, but with a warning in logs
+                return callback({ type: 'CATALOG_NOT_FOUND', message: 'Registry connected but Catalog API not found (404). Listing disabled?' }, null);
+            }
+
+            callback({ type: 'FETCH_ERROR', message: `Failed to fetch: ${err.message}` }, null);
         }
     })();
 }

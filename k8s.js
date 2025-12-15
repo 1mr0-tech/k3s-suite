@@ -7,20 +7,37 @@ const fs = require('fs');
 function loadConfig(kc) {
     try {
         kc.loadFromDefault();
+        console.log('KubeConfig loaded from default sources.');
     } catch (e) {
-        // Ignore error if default load fails
+        console.warn('Failed to load default KubeConfig:', e.message);
     }
-    
-    // If no clusters found (meaning default load didn't find anything useful)
-    // check if k3s config exists and use it
-    if (kc.clusters.length === 0) {
+
+    // Check if we are in a bad state ("loaded-context" is often a placeholder when nothing real is loaded)
+    // or if no clusters found.
+    const isPlaceholderContext = kc.currentContext === 'loaded-context';
+    const noClusters = kc.clusters.length === 0;
+
+    if (noClusters || isPlaceholderContext) {
+        console.log(`Default config yielded no useful context (Clusters: ${kc.clusters.length}, Context: ${kc.currentContext}). Attempting fallback to k3s...`);
+
         const k3sConfigPath = '/etc/rancher/k3s/k3s.yaml';
         if (fs.existsSync(k3sConfigPath)) {
             try {
+                // Check read permissions
+                fs.accessSync(k3sConfigPath, fs.constants.R_OK);
+
                 kc.loadFromFile(k3sConfigPath);
+                console.log('Successfully loaded k3s config from /etc/rancher/k3s/k3s.yaml');
             } catch (err) {
-                console.error('Found k3s config but failed to load it (likely permission error):', err.message);
+                if (err.code === 'EACCES') {
+                    console.error('CRITICAL: Found k3s config at /etc/rancher/k3s/k3s.yaml but CANNOT READ IT. Permission denied.');
+                    console.error('Try running with sudo or `chmod 644 /etc/rancher/k3s/k3s.yaml`');
+                } else {
+                    console.error('Found k3s config but failed to load it:', err.message);
+                }
             }
+        } else {
+            console.log('No k3s config found at /etc/rancher/k3s/k3s.yaml');
         }
     }
 }
